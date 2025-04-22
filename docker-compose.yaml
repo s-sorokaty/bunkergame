@@ -1,0 +1,18 @@
+version: "3"
+
+services:
+
+  tg_bot:
+    container_name: "bunker-game"
+    build:
+      context: ./bunkergame
+      dockerfile: Dockerfile
+    command: poetry run python manage.py runserver 0.0.0.0:8000
+    #env_file:
+    #  - bunkergame/.env
+    volumes:
+      - ./bunkergame/:/workspace/
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - 8000:8000
