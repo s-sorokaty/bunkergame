@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Главная страница{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        max-width: 400px;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: rgba(0, 0, 0, 0.8); /* Полупрозрачный фон */
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #ffffff;
+    }
+
+    .registration-form {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .registration-form p {
+        margin: 10px 0; /* Отступ для параграфов */
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        background-color: #ffffff;
+        color: #333;
+        font-size: 16px;
+        transition: border 0.3s;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+        border: 2px solid #28a745; /* Зеленая рамка при фокусе */
+        outline: none;
+    }
+
+    button {
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        background-color: #28a745; /* Зеленый цвет */
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    button:hover {
+        background-color: #218838; /* Темнее при наведении */
+    }
+
+    .login-link {
+        text-align: center;
+        margin-top: 15px;
+    }
+
+    .login-link a {
+        color: #ffffff;
+        text-decoration: underline;
+    }
+</style>
+
+<div class="container">
+    <h2>Регистрация</h2>
+    <form method="post" class="registration-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Зарегистрироваться</button>
+    </form>
+    <p class="login-link">Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+</div>
+{% endblock %}
