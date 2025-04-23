@@ -1,0 +1,2 @@
+class LobbyAlreadyCreated(Exception):
+    pass
