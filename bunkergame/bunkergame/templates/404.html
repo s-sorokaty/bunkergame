@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Страница не найдена{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(0, 0, 0, 0.7); /* Полупрозрачный черный фон */
+        color: #ffffff;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        height: 100vh; /* Занимает всю высоту экрана */
+    }
+
+    .container {
+        background-color: rgba(0, 0, 0, 0.7); /* Полупрозрачный фон для контейнера */
+        border-radius: 10px;
+        padding: 40px;
+        text-align: center; /* Центрирование текста */
+    }
+
+    h1 {
+        font-size: 48px;
+        margin: 0 0 20px; /* Отступы */
+    }
+
+    p {
+        font-size: 18px;
+        margin: 0 0 30px; /* Отступы */
+    }
+
+    a {
+        color: #6200ea; /* Цвет ссылки */
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+</style>
+<div class="container">
+    <h1>404 - Страница не найдена</h1>
+    <p>К сожалению, запрашиваемая вами страница не существует.</p>
+    <p><a href="/">Вернуться на главную страницу</a></p>
+</div>
+{% endblock %}

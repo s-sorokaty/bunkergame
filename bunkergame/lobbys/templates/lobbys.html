@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Страница с формой и списком
+{% endblock %}
+
+{% block content %}
+<style>
+
+    .list {
+        width: 60%; /* Увеличен размер списка */
+        border-right: 1px solid #444;
+        padding-right: 20px;
+        background-color: #1e1e1e;
+        border-radius: 5px;
+    }
+
+    .form {
+        width: 40%; /* Увеличен размер формы */
+        padding-left: 20px;
+        background-color: #1e1e1e;
+        border-radius: 5px;
+    }
+
+    h2 {
+        text-align: center;
+        color: #ffffff;
+    }
+
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    li {
+        background-color: #333333;
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+    }
+
+    li:hover {
+        background-color: #444444;
+    }
+
+    label {
+        font-weight: bold;
+        color: #ffffff;
+    }
+
+    input[type="text"],
+    input[type="email"] {
+        width: 100%;
+        padding: 10px;
+        margin: 5px 0 15px;
+        border: 1px solid #444;
+        border-radius: 4px;
+        background-color: #222222;
+        color: #ffffff;
+        size: 10px;
+    }
+
+    input[type="submit"] {
+        background-color: #6200ea;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    input[type="submit"]:hover {
+        background-color: #3700b3;
+    }
+</style>
+<div class="list">
+    <h2>Список</h2>
+    <ul>
+        <li>Элемент 1</li>
+        <li>Элемент 2</li>
+        <li>Элемент 3</li>
+        <li>Элемент 4</li>
+    </ul>
+</div>
+<div class="form">
+    {% csrf_token %}
+    <form>
+        <p>Создать игру</p>
+        <label for="name">Имя:</label><br>
+            <input type="text" id="name" name="name"><br>
+        <label for="email">Email:</label><br>
+            <input type="email" id="email" name="email"><br>
+
+        <input type="submit" value="Отправить">
+    </form>
+</div>
+{% endblock %}

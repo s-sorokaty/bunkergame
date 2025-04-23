@@ -6,7 +6,7 @@
     <title>{% block title %}Шаблон Бункера{% endblock %}</title>
     <style>
         body {
-            background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSo6e9kG1WNOTvH2k3SqN1CjS95P_sTbllOvg&s'); /* Замените на путь к вашему изображению */
+            background-image: url('https://cdn2.unrealengine.com/amnesia-the-bunker-is-a-chilling-underground-obstacle-course-of-horror-1920x1080-6dc65969cdb9.jpg'); /* Замените на путь к вашему изображению */
             background-size: cover;
             font-family: 'Arial', sans-serif;
             color: #ffffff; /* Цвет текста */
@@ -40,6 +40,26 @@
 
         nav ul li a:hover {
             text-decoration: underline;
+        }
+        main {
+            display: flex;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .list {
+            width: 30%;
+            border-right: 1px solid #ccc;
+            padding-right: 20px;
+        }
+
+        .form {
+            width: 70%;
+            padding-left: 20px;
+        }
+
+        h2 {
+            text-align: center;
         }
     </style>
 </head>

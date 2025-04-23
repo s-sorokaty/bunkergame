@@ -16,10 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-
+from lobbys.views import get_lobbys_list
+from django.conf.urls import handler404, handler500
 
 urlpatterns = [
+    path('', get_lobbys_list),
+    path('lobbys/', include('lobbys.urls')),
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
 ]
 
+handler404 = 'bunkergame.views.error_404'
+handler500 = 'bunkergame.views.error_500'

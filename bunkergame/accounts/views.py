@@ -7,7 +7,7 @@ def register(request):
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('/admin')
+            return redirect('/lobbys/lobbys_list')
     else:
         form = UserRegistrationForm()
     return render(request, 'register.html', {'form': form})
@@ -19,7 +19,7 @@ def user_login(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            return redirect('/admin')  # Redirect to a home page or dashboard
+            return redirect('/lobbys/lobbys_list')  # Redirect to a home page or dashboard
         else:
             return render(request, 'login.html', {'error': 'Неверное имя пользователя или пароль.'})
     return render(request, 'login.html')

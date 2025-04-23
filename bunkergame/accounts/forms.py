@@ -3,7 +3,8 @@ from django.contrib.auth.models import User
 
 class UserRegistrationForm(forms.ModelForm):
     username = forms.CharField(label='Имя пользователя:')
-    password = forms.CharField(label='Пароль:')
+    password = forms.CharField(label='Пароль:', widget=forms.PasswordInput)
+    
 
     class Meta:
         model = User
