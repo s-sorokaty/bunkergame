@@ -49,7 +49,7 @@ class User():
     spec_condition:int
     items:int
     is_in_game:bool = False
-    vote_id:UUID = None
+    vote_id:Optional[UUID] = None
 
     def __repr__(self,) -> str:
         return f"""
@@ -62,23 +62,15 @@ class User():
             Предметы: {user_rules.items[self.items]}
             """
     
-    def __init__(self, users:list[User]):
-        profession = [user.profession for user in users]
-        health = [user.health for user in users]
-        bio_character = [user.bio_character for user in users]
-        additional_skills = [user.additional_skills for user in users]
-        hobby = [user.hobby for user in users]
-        spec_condition = [user.spec_condition for user in users]
-        items = [user.items for user in users]
-
+    def __init__(self, game_id:UUID, users:list[User]):
         self.user_id = uuid4()
-        self.profession = get_random_value(max_val=len(user_rules.profession) - 1, excepted_values = profession)
-        self.health = get_random_value(max_val=len(user_rules.health) - 1, excepted_values = health)
-        self.bio_character = get_random_value(max_val=len(user_rules.bio_character) - 1, excepted_values = bio_character)
-        self.additional_skills = get_random_value(max_val=len(user_rules.additional_skills) - 1, excepted_values = additional_skills)
-        self.hobby = get_random_value(max_val=len(user_rules.hobby) - 1, excepted_values = hobby)
-        self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = spec_condition)
-        self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = items)
+        self.profession = get_random_value(max_val=len(user_rules.profession) - 1, excepted_values = [user.profession for user in users])
+        self.health = get_random_value(max_val=len(user_rules.health) - 1, excepted_values = [user.health for user in users])
+        self.bio_character = get_random_value(max_val=len(user_rules.bio_character) - 1, excepted_values = [user.bio_character for user in users])
+        self.additional_skills = get_random_value(max_val=len(user_rules.additional_skills) - 1, excepted_values = [user.additional_skills for user in users])
+        self.hobby = get_random_value(max_val=len(user_rules.hobby) - 1, excepted_values = [user.hobby for user in users])
+        self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = [user.spec_condition for user in users])
+        self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = [user.items for user in users])
         self.is_in_game = True
 
     
@@ -92,7 +84,7 @@ class User():
         game_logger(f'Player {self.user_id} voted for {voted_user_id}')
 
     
-class GameEnigine():
+class GameEngine():
     _game_id:UUID = None
     _map_descriptions: int = None
     _bunker_descritions: int = None
@@ -110,27 +102,11 @@ class GameEnigine():
     @property
     def map_descriptions(self,):
         return self._map_descriptions
-    
-    @map_descriptions.setter
-    def map_descriptions(self, map_descriptions):
-        self._map_descriptions = map_descriptions
-
-    @map_descriptions.getter
-    def map_descriptions(self,):
-        return self._map_descriptions
 
     @property
     def bunker_descritions(self,):
         return self._bunker_descritions    
     
-    @bunker_descritions.setter
-    def bunker_descritions(self, bunker_descritions):
-        self._bunker_descritions = bunker_descritions
-    
-    @bunker_descritions.getter
-    def bunker_descritions(self,):
-        return self._bunker_descritions
-
     #Wrapper checking lobby created
     def lobby_status_check(status:GameStatusesEnum):
         def out_wrap(func:callable):
@@ -144,16 +120,20 @@ class GameEnigine():
         return out_wrap
     
     def __repr__(self,):
-        if self._map_descriptions and self._bunker_description:
+        if self._map_descriptions and self._bunker_descritions:
             return f"""
                 Описание карты: {lobby_rules.map_descriptions[self._map_descriptions]}
-                Описание бункера:{lobby_rules.bunker_description[self._bunker_description]} 
+                Описание бункера:{lobby_rules.bunker_description[self._bunker_descritions]} 
                 """
         else:
             return ""
         
-    def get_user_by_id(self, user_id:UUID) -> Optional[User] :
-        return [user for user in self._users if user.user_id == user_id]
+    def get_user_by_id(self, user_id:UUID) -> Optional[User]:
+        finded_user = None
+        for user in self._users:
+            if user.user_id == user_id:
+                finded_user = user
+        return finded_user
     
     def get_users_in_game(self,) -> list[User]:
         return [user for user in self._users if user.is_in_game]
@@ -161,37 +141,37 @@ class GameEnigine():
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
     def create_lobby(self,) -> None:
         for _ in range(self._user_count):
-            user = User(self._users)
+            user = User(self._game_id, self._users)
             self._users.append(user)
             game_logger(f'User {user.user_id} CREATED')
         self._map_descriptions = get_random_value(max_val=len(lobby_rules.map_descriptions) - 1)
-        self._bunker_description = get_random_value(max_val=len(lobby_rules.bunker_description) - 1)
+        self._bunker_descritions = get_random_value(max_val=len(lobby_rules.bunker_description) - 1)
 
         self.game_status = GameStatusesEnum.CREATED
         self._turn = 0
-        game_logger(f'GameEnigine {self._game_id} status {GameStatusesEnum.CREATED}')
+        game_logger(f'GameEngine {self._game_id} status {GameStatusesEnum.CREATED}')
     
     @lobby_status_check(GameStatusesEnum.CREATED)
     def start_game(self,) -> None:
         self.game_status = GameStatusesEnum.IN_PROGRESS
-        game_logger(f'GameEnigine {self._game_id} status {GameStatusesEnum.IN_PROGRESS}')
+        game_logger(f'GameEngine {self._game_id} status {GameStatusesEnum.IN_PROGRESS}')
 
     @lobby_status_check(GameStatusesEnum.IN_PROGRESS)
     def make_turn(self,) -> None:
         self.game_status = GameStatusesEnum.TURNING
         self._turn += 1
-        game_logger(f'GameEnigine {self._game_id} status {GameStatusesEnum.TURNING}')
+        game_logger(f'GameEngine {self._game_id} status {GameStatusesEnum.TURNING}')
     
     @lobby_status_check(GameStatusesEnum.TURNING)
     def end_turn(self,) -> None:
         self.game_status = GameStatusesEnum.VOTING
-        game_logger(f'GameEnigine {self._game_id} status {GameStatusesEnum.VOTING}')
+        game_logger(f'GameEngine {self._game_id} status {GameStatusesEnum.VOTING}')
 
 
     @lobby_status_check(GameStatusesEnum.VOTING)
     def end_vote(self,) -> None | str:
         if self._turn > 1:
-            all_votes:list[tuple[str, int]] = Counter([str(user.vote_id) for user in self.get_users_in_game() if user.vote_id]).most_common()
+            all_votes:list[tuple[UUID, int]] = Counter([user.vote_id for user in self.get_users_in_game() if user.vote_id]).most_common()
 
             if len(all_votes):
                 nominante_to_kick = [all_votes[0]]
@@ -205,12 +185,12 @@ class GameEnigine():
                 if len(nominante_to_kick) > 1:
                     all_voted_idx = get_random_value(0, 1)
                 
-                self.kick_from_game_by_id(UUID(nominante_to_kick[all_voted_idx][0]))
+                self.kick_from_game_by_id(nominante_to_kick[all_voted_idx][0])
 
         for user in self._users:
             user.vote_id = None
 
-        game_logger(f'GameEnigine {self._game_id} status {GameStatusesEnum.IN_PROGRESS}')
+        game_logger(f'GameEngine {self._game_id} status {GameStatusesEnum.IN_PROGRESS}')
 
         if len(self.get_users_in_game()) == self._user_count/2:
             return self.game_ended()
@@ -221,7 +201,7 @@ class GameEnigine():
     def game_ended(self,) -> str:
         nn_res = 'GAME ENDED TEMPLATE'
         self.game_status = GameStatusesEnum.END
-        game_logger(f'GameEnigine {self._game_id} status {GameStatusesEnum.END}')
+        game_logger(f'GameEngine {self._game_id} status {GameStatusesEnum.END}')
         return nn_res
 
     @lobby_status_check(GameStatusesEnum.END)
@@ -233,6 +213,6 @@ class GameEnigine():
         for user in self._users:
             if user.user_id == user_id:
                 user.is_in_game = False
-                game_logger(f'GameEnigine {self._game_id} player {user.user_id} kicked')
+                game_logger(f'GameEngine {self._game_id} player {user.user_id} kicked')
 
         

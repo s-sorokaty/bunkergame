@@ -1,8 +1,8 @@
-from game_engine import GameEnigine, GameStatusesEnum
+from game_engine import GameEngine
 
-game = GameEnigine()
+game = GameEngine()
 
-def test_game_scenarios(game:GameEnigine):
+def test_game_scenarios(game:GameEngine):
     game.create_lobby()
     game.start_game()
 
