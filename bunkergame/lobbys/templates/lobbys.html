@@ -76,10 +76,14 @@
     }
 </style>
 <div class="list">
-    <h2>Список</h2>
+    <h2>Список лобби</h2>
     <ul>
         {% for lobby in lobbies %}
-            <li>{{ lobby.game_name }}</li>  <!-- Отображаем имя лобби -->
+            
+                <a href="{% url 'gameengine:join_game' lobby.game_id %}" style="color: #ffffff; text-decoration: none;">
+                    <li>{{ lobby.game_name }}</li> 
+                </a>
+            
         {% empty %}
             <li>Нет доступных лобби.</li>  <!-- Сообщение, если лобби отсутствуют -->
         {% endfor %}

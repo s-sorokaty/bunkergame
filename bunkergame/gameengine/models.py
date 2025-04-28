@@ -45,21 +45,31 @@ class GameUser(models.Model):
             Особые условия: {user_rules.spec_condition[self.spec_condition]}
             Предметы: {user_rules.items[self.items]}
             """
-    
-    #FIXME need to fix
-    def create(self, game_id:UUID, users:list[User]):
+    def as_ru_dict(self,) -> dict:
+        ru_dict = {"profession": user_rules.profession[self.profession],
+            "health": user_rules.health[self.health],
+            "bio_character": user_rules.bio_character[self.bio_character],
+            "additional_skills": user_rules.additional_skills[self.additional_skills],
+            "hobby": user_rules.hobby[self.hobby],
+            "spec_condition": user_rules.spec_condition[self.spec_condition],
+            "items": user_rules.items[self.items],
+            }
+        return ru_dict
+        
+    def create(self, game_id:GameEngine, user:User, existed_users:list[GameUser]):
         self.user_id = uuid4()
         self.game_id = game_id
-        self.profession = get_random_value(max_val=len(user_rules.profession) - 1, excepted_values = [user.profession for user in users])
-        self.health = get_random_value(max_val=len(user_rules.health) - 1, excepted_values = [user.health for user in users])
-        self.bio_character = get_random_value(max_val=len(user_rules.bio_character) - 1, excepted_values = [user.bio_character for user in users])
-        self.additional_skills = get_random_value(max_val=len(user_rules.additional_skills) - 1, excepted_values = [user.additional_skills for user in users])
-        self.hobby = get_random_value(max_val=len(user_rules.hobby) - 1, excepted_values = [user.hobby for user in users])
-        self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = [user.spec_condition for user in users])
-        self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = [user.items for user in users])
+        self.account_id = user
+        self.profession = get_random_value(max_val=len(user_rules.profession) - 1, excepted_values = [user.profession for user in existed_users])
+        self.health = get_random_value(max_val=len(user_rules.health) - 1, excepted_values = [user.health for user in existed_users])
+        self.bio_character = get_random_value(max_val=len(user_rules.bio_character) - 1, excepted_values = [user.bio_character for user in existed_users])
+        self.additional_skills = get_random_value(max_val=len(user_rules.additional_skills) - 1, excepted_values = [user.additional_skills for user in existed_users])
+        self.hobby = get_random_value(max_val=len(user_rules.hobby) - 1, excepted_values = [user.hobby for user in existed_users])
+        self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = [user.spec_condition for user in existed_users])
+        self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = [user.items for user in existed_users])
         self.is_in_game = True
-        
-
+        self.save()
+    
     #FIXME need to fix
     def make_vote(self, voted_user_id: UUID) -> None:
         if self.user_id == voted_user_id:
@@ -85,8 +95,6 @@ class GameEngine(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    
-    #FIXME need to fix
     def lobby_status_check(status:GameStatusesEnum):
         def out_wrap(func:callable):
             functools.wraps(func)
@@ -105,29 +113,26 @@ class GameEngine(models.Model):
         self.game_name = game_name
         self.user_count = user_count
         self.game_status = GameStatusesEnum.NOT_CREATED
+        self.map_descriptions = get_random_value(max_val=len(lobby_rules.map_descriptions) - 1)
+        self.bunker_descritions = get_random_value(max_val=len(lobby_rules.bunker_description) - 1)
         self.save()
         
+    def get_ru_map_descriptions(self,) -> str:
+        return lobby_rules.map_descriptions[self.map_descriptions]
     
-    #FIXME need to fix
-    def get_user_by_id(self, user_id:UUID) -> Optional[GameUser]:
-        finded_user = None
-        for user in self._users:
-            if user.user_id == user_id:
-                finded_user = user
-        return finded_user
-    
-    #FIXME need to fix
-    def get_all_users(self,) -> list[GameUser]:
-        return [user for user in self._users]
-    
-    #FIXME need to fix
-    def get_users_in_game(self,) -> list[GameUser]:
-        return [user for user in self._users if user.is_in_game]
-    
+    def get_ru_bunker_descriptions(self,) -> str:
+        return lobby_rules.bunker_description[self.bunker_descritions]
+           
+    @lobby_status_check(GameStatusesEnum.NOT_CREATED)
+    def join_user(self, user:User) -> None:
+        existed_user = GameUser.objects.filter(game_id=self.game_id).all()
+        if len(existed_user) < self.user_count:
+            GameUser().create(self, user, existed_user)
+            game_logger(f'GameUser for User {user} CREATED')
+
     #FIXME need to fix
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
-    def create_lobby(self, request) -> None:
-        self.game_id = uuid4()
+    def create_lobby(self) -> None:
         for _ in range(self._user_count):
             user = GameUser.create(self.game_id, self.get_all_users())
             #self._users.append(user)
@@ -136,7 +141,6 @@ class GameEngine(models.Model):
         self._bunker_descritions = get_random_value(max_val=len(lobby_rules.bunker_description) - 1)
 
         self.game_status = GameStatusesEnum.CREATED
-        self._turn = 0
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
     
     @lobby_status_check(GameStatusesEnum.CREATED)
