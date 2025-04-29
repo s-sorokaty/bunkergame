@@ -7,10 +7,10 @@ services:
     build:
       context: ./bunkergame
       dockerfile: Dockerfile
-    command: poetry run python manage.py runserver 0.0.0.0:8000
+    command: bash -c " make migrate && poetry run python manage.py runserver 0.0.0.0:8000"
     env_file:
       - bunkergame/.env
     volumes:
-      - ./bunkergame/:/workspace/
+      - ./bunkergame/:/bunkergame/
     ports:
       - 8000:8000

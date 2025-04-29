@@ -13,7 +13,7 @@
 
     .character-window {
         width: 90%; /* Ширина окна */
-        max-width: 900px; /* Максимальная ширина для больших экранов */
+        max-width: 1200px; /* Увеличенная максимальная ширина для больших экранов */
         margin: auto;
         background-color: #1e1e1e;
         border-radius: 10px;
@@ -39,10 +39,11 @@
         margin: 10px;
         padding: 15px; /* Увеличенный отступ */
         border-radius: 8px;
-        width: calc(30% - 20px); /* Ширина карточки для больших экранов */
+        width: calc(25% - 20px); /* Ширина карточки для больших экранов */
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); /* Тень для карточек */
         border: 2px solid #6200ea; /* Рамка вокруг карточки */
         transition: transform 0.2s; /* Плавный переход при наведении */
+        position: relative; /* Для позиционирования номера */
     }
 
     .character:hover {
@@ -54,6 +55,17 @@
         text-align: center;
         font-size: 1.5em; /* Увеличенный размер шрифта */
         margin-bottom: 10px; /* Отступ снизу */
+    }
+
+    .character-number {
+        position: absolute; /* Абсолютное позиционирование номера */
+        top: 10px;
+        left: 10px;
+        background-color: rgba(98, 0, 234, 0.8); /* Полупрозрачный фон для номера */
+        color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-weight: bold;
     }
 
     .character p {
@@ -149,6 +161,7 @@
     <div class="character-list">
         {% for character in game_users %}
             <div class="character">
+                <div class="character-number">{{ 1 }}</div> <!-- Номер карточки -->
                 <h3>NO NAME</h3>
                 <p onclick="showStat('{{ character.profession }}')"><strong>Профессия:</strong> {{ character.profession }}</p>
                 <p onclick="showStat('{{ character.health }}')"><strong>Здоровье:</strong> {{ character.health }}</p>
@@ -165,9 +178,9 @@
 </div>
 
 <script>
-function showStat(profession) {
-    // Заглушка для функции показа профессии
-    console.log("Профессия:", profession);
+function showStat(stat) {
+    // Заглушка для функции показа статистики
+    console.log("Статистика:", stat);
 }
 
 function updateGameStatus() {

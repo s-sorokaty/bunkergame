@@ -20,14 +20,16 @@ def create_empty_game(request:HttpRequest):
 @decorators.login_required(login_url='/accounts/login/')
 def join_game(request:HttpRequest, game_id:UUID):
     if request.method == 'GET':
-        game_engine = GameEngine.objects.get(game_id=game_id) 
-        game_user = User.objects.get(id=request.user.id)
-        game_engine.join_user(game_user)
+        game_engine = GameEngine.objects.get(game_id=game_id)
+        users_in_game = [game_user.account_id.username for game_user in GameUser.objects.filter(game_id=game_id).all()]
+        user = User.objects.get(id=request.user.id)
+
+        if not user.username in users_in_game: 
+            game_engine.join_user(user)
+
         game_users = GameUser.objects.filter(game_id=game_engine.game_id).all()
 
-        #user = User.objects.get(id=request.user.id)
-        #game_engine = GameEngine()
-        #game_name = request.GET['game_id']
+
         return render(request, "game.html", {"game_users": [game_user.as_ru_dict() for game_user in game_users],
                                              "bunker_description":game_engine.get_ru_bunker_descriptions(),
                                              "map_description":game_engine.get_ru_map_descriptions()
