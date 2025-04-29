@@ -161,8 +161,8 @@
     <div class="character-list">
         {% for character in game_users %}
             <div class="character">
-                <div class="character-number">{{ 1 }}</div> <!-- Номер карточки -->
-                <h3>NO NAME</h3>
+                <div class="character-number">{{ character.game_number }}</div> <!-- Номер карточки -->
+                <h3>{{ character.game_name }}<div>({{character.username}})</div></h3>
                 <p onclick="showStat('{{ character.profession }}')"><strong>Профессия:</strong> {{ character.profession }}</p>
                 <p onclick="showStat('{{ character.health }}')"><strong>Здоровье:</strong> {{ character.health }}</p>
                 <p onclick="showStat('{{ character.bio_character }}')"><strong>БИО:</strong> {{ character.bio_character }}</p>

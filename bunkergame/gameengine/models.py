@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 
 from .utils import exceptions, lobby_rules, user_rules
-from .utils.helpers import game_logger, get_random_value
+from .utils.helpers import game_logger, get_random_value, generate_name
 
 class GameStatusesEnum(models.IntegerChoices):
     NOT_CREATED = 0
@@ -23,6 +23,8 @@ class GameUser(models.Model):
     user_id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     account_id = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     game_id = models.ForeignKey("GameEngine", on_delete=models.CASCADE)
+    game_number = models.IntegerField(default=0)
+    game_name = models.CharField(max_length=50, default='')
     profession = models.IntegerField()
     health = models.IntegerField()
     bio_character = models.IntegerField()
@@ -35,31 +37,27 @@ class GameUser(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __repr__(self,) -> str:
-        return f"""
-            Профессия: {user_rules.profession[self.profession]}
-            Здоровье: {user_rules.health[self.health]}
-            БИО: {user_rules.bio_character[self.bio_character]}
-            ДОП навыки: {user_rules.additional_skills[self.additional_skills]}
-            Хобби: {user_rules.hobby[self.hobby]}
-            Особые условия: {user_rules.spec_condition[self.spec_condition]}
-            Предметы: {user_rules.items[self.items]}
-            """
     def as_ru_dict(self,) -> dict:
-        ru_dict = {"profession": user_rules.profession[self.profession],
+        ru_dict = {
+            "game_number": self.game_number,
+            "game_name": self.game_name,
+            "profession": user_rules.profession[self.profession],
             "health": user_rules.health[self.health],
             "bio_character": user_rules.bio_character[self.bio_character],
             "additional_skills": user_rules.additional_skills[self.additional_skills],
             "hobby": user_rules.hobby[self.hobby],
             "spec_condition": user_rules.spec_condition[self.spec_condition],
             "items": user_rules.items[self.items],
+            "username": self.account_id.username,
             }
         return ru_dict
         
-    def create(self, game_id:GameEngine, user:User, existed_users:list[GameUser]):
+    def create(self, game_id:GameEngine, user:User, game_number:int, existed_users:list[GameUser]):
         self.user_id = uuid4()
         self.game_id = game_id
         self.account_id = user
+        self.game_number = game_number
+        self.game_name = generate_name()
         self.profession = get_random_value(max_val=len(user_rules.profession) - 1, excepted_values = [user.profession for user in existed_users])
         self.health = get_random_value(max_val=len(user_rules.health) - 1, excepted_values = [user.health for user in existed_users])
         self.bio_character = get_random_value(max_val=len(user_rules.bio_character) - 1, excepted_values = [user.bio_character for user in existed_users])
@@ -70,6 +68,18 @@ class GameUser(models.Model):
         self.is_in_game = True
         self.save()
     
+    def regenerate_user(self, existed_users:list[GameUser]):
+        self.game_name = generate_name()
+        self.profession = get_random_value(max_val=len(user_rules.profession) - 1, excepted_values = [user.profession for user in existed_users])
+        self.health = get_random_value(max_val=len(user_rules.health) - 1, excepted_values = [user.health for user in existed_users])
+        self.bio_character = get_random_value(max_val=len(user_rules.bio_character) - 1, excepted_values = [user.bio_character for user in existed_users])
+        self.additional_skills = get_random_value(max_val=len(user_rules.additional_skills) - 1, excepted_values = [user.additional_skills for user in existed_users])
+        self.hobby = get_random_value(max_val=len(user_rules.hobby) - 1, excepted_values = [user.hobby for user in existed_users])
+        self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = [user.spec_condition for user in existed_users])
+        self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = [user.items for user in existed_users])
+        self.is_in_game = True
+        self.save()
+
     #FIXME need to fix
     def make_vote(self, voted_user_id: UUID) -> None:
         if self.user_id == voted_user_id:
@@ -127,8 +137,16 @@ class GameEngine(models.Model):
     def join_user(self, user:User) -> None:
         existed_user = GameUser.objects.filter(game_id=self.game_id).all()
         if len(existed_user) < self.user_count:
-            GameUser().create(self, user, existed_user)
+            GameUser().create(self, user, len(existed_user)+1, existed_user)
             game_logger(f'GameUser for User {user} CREATED')
+
+    @lobby_status_check(GameStatusesEnum.NOT_CREATED)
+    def regenerate_user(self, user:User) -> None:
+        existed_user = GameUser.objects.filter(game_id=self.game_id).all()
+        for ex_user in existed_user:
+            if ex_user.account_id.username == user.username:
+                ex_user.regenerate_user()
+                game_logger(f'GameUser for User {user} REGENERATED')
 
     #FIXME need to fix
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
