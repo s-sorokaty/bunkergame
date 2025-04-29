@@ -23,21 +23,28 @@ def join_game(request:HttpRequest, game_id:UUID):
         game_engine = GameEngine.objects.get(game_id=game_id)
         users_in_game = [game_user.account_id.username for game_user in GameUser.objects.filter(game_id=game_id).all()]
         user = User.objects.get(id=request.user.id)
-
         if not user.username in users_in_game: 
             game_engine.join_user(user)
 
         game_users = GameUser.objects.filter(game_id=game_engine.game_id).all()
-
-
         return render(request, "game.html", {"game_users": [game_user.as_ru_dict() for game_user in game_users],
-                                             "bunker_description":game_engine.get_ru_bunker_descriptions(),
-                                             "map_description":game_engine.get_ru_map_descriptions()
+                                             "game_info":{**game_engine.get_game_info(), "request_username":user.username},
+                                             
                                              })
     return HttpResponseBadRequest("Wrong request method") 
        
-
 @decorators.login_required(login_url='/accounts/login/')
 def game_list(request:HttpRequest):
     games = GameEngine.objects.all().values()
     return JsonResponse(list(games), safe=False)
+
+@decorators.login_required(login_url='/accounts/login/')
+def start_game(request:HttpRequest, game_id:UUID):
+    game_engine = GameEngine.objects.get(game_id=game_id)
+    game_engine.start_game()
+
+@decorators.login_required(login_url='/accounts/login/')
+def leave_game(request:HttpRequest, game_id:UUID):
+    game_engine = GameEngine.objects.get(game_id=game_id)
+    game_engine.remove_user(request.user, )
+    return redirect('/')

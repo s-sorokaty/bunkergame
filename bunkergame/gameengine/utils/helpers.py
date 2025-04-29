@@ -3,6 +3,14 @@ import logging
 
 from .names import last_names, first_names
 
+ru_game_status = {
+    0:"В процессе создания",
+    1:"Игра создана",
+    2:"Игра идет",
+    3:"Идет ход",
+    4:"Идет голосование",
+    5:"Игра закончилась"
+}
 def game_logger(action:str):
     #logging.basicConfig(level=logging.INFO)
     logging.info(f"LOGGED ACTIONS: {action}")
