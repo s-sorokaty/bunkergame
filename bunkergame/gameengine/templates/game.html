@@ -321,6 +321,26 @@ function updateGameStatus() {
     // Заглушка для обновления статуса игры
     //document.getElementById("game-status").innerText = "Статус обновлен! Игра продолжается...";
 }
+const gameId = "{{ game_info.game_id }}"; // Assuming game_id is passed in context
+
+const chatSocket = new WebSocket(`ws://${window.location.host}/ws/game/${gameId}/`);
+
+chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    console.log(data.message);
+    game_info.game_status = 123452
+    // Handle incoming messages
+};
+
+chatSocket.onclose = function(e) {
+    console.error('Chat socket closed unexpectedly');
+};
+
+function sendMessage(message) {
+    chatSocket.send(JSON.stringify({
+        'message': message
+    }));
+}
 </script>
 
 {% endblock %}

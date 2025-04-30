@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate, login, decorators
 from django.http import JsonResponse, HttpRequest, HttpResponseBadRequest
 
 from .models import GameEngine, GameUser
+from .consumers import send_game_message
 
 @decorators.login_required(login_url='/accounts/login/')
 def create_empty_game(request:HttpRequest):
@@ -25,7 +26,9 @@ def join_game(request:HttpRequest, game_id:UUID):
         user = User.objects.get(id=request.user.id)
         if not user.username in users_in_game: 
             game_engine.join_user(user)
-
+            
+        send_game_message(game_id, game_engine.get_game_info())
+        
         game_users = GameUser.objects.filter(game_id=game_engine.game_id).all()
         return render(request, "game.html", {"game_users": [game_user.as_ru_dict() for game_user in game_users],
                                              "game_info":{**game_engine.get_game_info(), "request_username":user.username},

@@ -7,8 +7,9 @@ from collections import Counter
 from django.contrib.auth.models import User
 from django.core.exceptions import BadRequest
 
-from .utils import exceptions, lobby_rules, user_rules
+from .utils import lobby_rules, user_rules
 from .utils.helpers import game_logger, get_random_value, generate_name, ru_game_status
+
 
 class GameStatusesEnum(models.IntegerChoices):
     NOT_CREATED = 0
@@ -150,8 +151,8 @@ class GameEngine(models.Model):
     
     def get_game_info(self,):
         return {
-            "game_id":self.game_id,
-            "owner_id":self.owner_id,
+            "game_id":str(self.game_id),
+            "owner_id":str(self.owner_id),
             "game_name":self.game_name,
             "user_count":self.user_count,
             "game_status":ru_game_status[self.game_status],

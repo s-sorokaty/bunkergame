@@ -22,9 +22,9 @@ from django.conf.urls import handler404, handler500
 urlpatterns = [
     path('', get_lobbys_list),
     path('lobbys/', include('lobbys.urls')),
-    path('admin/', admin.site.urls),
     path('game/', include('gameengine.urls'), name="game"),
     path('accounts/', include('accounts.urls')),
+    path('admin/', admin.site.urls),
 ]
 
 handler404 = 'bunkergame.views.error_404'
