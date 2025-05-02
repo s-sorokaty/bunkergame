@@ -8,7 +8,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 
-def send_game_message(game_id, message):
+def send_game_message(game_id:UUID, message:dict):
     channel_layer = get_channel_layer()
     room_group_name = f'game_{game_id}'
 
@@ -17,7 +17,7 @@ def send_game_message(game_id, message):
         room_group_name,
         {
             'type': 'game_status',
-            'message': message
+            'message': {**message, 'type': 'game_status'}
         }
     )
     
@@ -36,23 +36,9 @@ class GameConsumer(AsyncWebsocketConsumer):
         # Leave room group
         await self.close()
 
-    async def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message = text_data_json['message']
-
-        # Send message to room group
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'game_message',
-                'message': message
-            }
-        )
-
     async def game_status(self, event):
         message = event['message']
 
-        # Send message to WebSocket
         await self.send(text_data=json.dumps({
             'message': message
         }))

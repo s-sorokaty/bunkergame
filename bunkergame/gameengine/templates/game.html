@@ -183,16 +183,15 @@
     <div class="status-window">
         <h3>Текущий статус игры</h3>
         <p id="game-status">{{game_info.game_status}}</p>
-        <button class="button" onclick="updateGameStatus()">Обновить статус</button>
     </div>
 
-    <div class="character-list">
+    <div class="character-list" id="user_list_{{ game_info.game_id}}">
         {% for character in game_users %}
             <div class="character">
                 <div class="character-number">{{ character.game_number }}</div> 
                 <h3>{{ character.game_name }}<div>({{character.username}})</div></h3>
                 
-                <p onclick="showStat('{{ character.profession }}')">
+                <p onclick="showStat('{{ character.username }}', 'profession')">
                     <strong>Профессия:</strong>
                     {% if character.is_profession_visible or character.username == game_info.request_username %}
                         {{ character.profession }} 
@@ -208,12 +207,12 @@
                     {% endif %}
                 </p>
                 
-                <p onclick="showStat('{{ character.health }}')">
+                <p onclick="showStat('{{ character.username }}', 'health')">
                     <strong>Здоровье:</strong>
                     {% if character.is_health_visible or character.username == game_info.request_username %}
                         {{ character.health }}
                         {% if character.username == game_info.request_username %}
-                            {% if character.is_profession_visible %}
+                            {% if character.is_health_visible %}
                                 (Показано)
                             {% else %}
                                 (Не показано)
@@ -224,12 +223,12 @@
                     {% endif %}
                 </p>
                 
-                <p onclick="showStat('{{ character.bio_character }}')">
+                <p onclick="showStat('{{ character.username }}', 'bio_character')">
                     <strong>БИО:</strong>
                     {% if character.is_bio_character_visible or character.username == game_info.request_username %}
                         {{ character.bio_character }}
                         {% if character.username == game_info.request_username %}
-                            {% if character.is_profession_visible %}
+                            {% if character.is_bio_character_visible %}
                                 (Показано)
                             {% else %}
                                 (Не показано)
@@ -240,12 +239,12 @@
                     {% endif %}
                 </p>
                 
-                <p onclick="showStat('{{ character.additional_skills }}')">
+                <p onclick="showStat('{{ character.username }}', 'additional_skills')">
                     <strong>Дополнительные навыки:</strong>
                     {% if character.is_additional_skills_visible or character.username == game_info.request_username %}
                         {{ character.additional_skills }}
                         {% if character.username == game_info.request_username %}
-                            {% if character.is_profession_visible %}
+                            {% if character.is_additional_skills_visible %}
                                 (Показано)
                             {% else %}
                                 (Не показано)
@@ -256,12 +255,12 @@
                     {% endif %}
                 </p>
                 
-                <p onclick="showStat('{{ character.hobby }}')">
+                <p onclick="showStat('{{ character.username }}', 'hobby')">
                     <strong>Хобби:</strong>
                     {% if character.is_hobby_visible or character.username == game_info.request_username %}
                         {{ character.hobby }}
                         {% if character.username == game_info.request_username %}
-                            {% if character.is_profession_visible %}
+                            {% if character.is_hobby_visible %}
                                 (Показано)
                             {% else %}
                                 (Не показано)
@@ -272,12 +271,12 @@
                     {% endif %}
                 </p>
                 
-                <p onclick="showStat('{{ character.spec_condition }}')">
+                <p onclick="showStat('{{ character.username }}', 'spec_condition')">
                     <strong>Особые условия:</strong>
                     {% if character.is_spec_condition_visible or character.username == game_info.request_username %}
                         {{ character.spec_condition }}
                         {% if character.username == game_info.request_username %}
-                            {% if character.is_profession_visible %}
+                            {% if character.is_spec_condition_visible %}
                                 (Показано)
                             {% else %}
                                 (Не показано)
@@ -288,12 +287,12 @@
                     {% endif %}
                 </p>
                 
-                <p onclick="showStat('{{ character.items }}')">
+                <p onclick="showStat('{{ character.username }}', 'items')">
                     <strong>Вещи:</strong>
                     {% if character.is_items_visible or character.username == game_info.request_username %}
                         {{ character.items }}
                         {% if character.username == game_info.request_username %}
-                            {% if character.is_profession_visible %}
+                            {% if character.is_items_visible %}
                                 (Показано)
                             {% else %}
                                 (Не показано)
@@ -312,24 +311,67 @@
 </div>
 
 <script>
-function showStat(stat) {
-    // Заглушка для функции показа статистики
-    console.log("Статистика:", stat);
-}
-
-function updateGameStatus() {
-    // Заглушка для обновления статуса игры
-    //document.getElementById("game-status").innerText = "Статус обновлен! Игра продолжается...";
-}
-const gameId = "{{ game_info.game_id }}"; // Assuming game_id is passed in context
-
+const gameId = "{{ game_info.game_id }}"; // Предполагаем, что game_id передан в контексте
+const username = "{{ game_info.request_username }}"; // Предполагаем, что username передан в контексте
 const chatSocket = new WebSocket(`ws://${window.location.host}/ws/game/${gameId}/`);
+
+function showStat(e_username, stat) {
+    // Проверяем, является ли пользователь владельцем персонажа
+    if (e_username == username){
+        fetch(`/game/showstat/${gameId}/?statname=${stat}`, {})
+        .then(response => response.json())
+    }
+}
 
 chatSocket.onmessage = function(e) {
     const data = JSON.parse(e.data);
     console.log(data.message);
-    game_info.game_status = 123452
-    // Handle incoming messages
+
+    if (data.message.type === 'game_status') {
+        document.getElementById("game-status").innerText = data.message.game_info.game_status;
+
+        const characterList = document.getElementById(`user_list_${data.message.game_info.game_id}`);
+        characterList.innerHTML = ''; // Очищаем текущие карточки
+        
+        data.message.game_users.forEach(character => {
+            const characterDiv = document.createElement('div');
+            characterDiv.className = 'character';
+            characterDiv.id = `character-${character.game_number}`;
+            characterDiv.innerHTML = `
+                <div class="character-number">${character.game_number}</div>
+                <h3>${character.game_name}<div>(${character.username})</div></h3>
+                <p onclick="showStat('${character.username}', 'profession')">
+                    <strong>Профессия:</strong>
+                    ${character.is_profession_visible || character.username === username ? `<span class="profession">${character.profession} ${character.username === username  ? character.is_profession_visible ? `(Показано)` : `(Не показано)` : `<div/>`} </span>` : `<span>Неизвестно</span>`}
+                </p>
+                <p onclick="showStat('${character.username}', 'health')">
+                    <strong>Здоровье:</strong>
+                    ${character.is_health_visible || character.username === username ? `<span class="health">${character.health} ${character.username === username  ? character.is_health_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
+                </p>
+                <p onclick="showStat('${character.username}', 'bio_character')">
+                    <strong>БИО:</strong>
+                    ${character.is_bio_character_visible || character.username === username ? `<span class="bio">${character.bio_character} ${character.username === username  ? character.is_bio_character_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
+                </p>
+                <p onclick="showStat('${character.username}', 'additional_skills')">
+                    <strong>Дополнительные навыки:</strong>
+                    ${character.is_additional_skills_visible || character.username === username ? `<span class="additional-skills">${character.additional_skills} ${character.username === username  ? character.is_additional_skills_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
+                </p>
+                <p onclick="showStat('${character.username}', 'hobby')">
+                    <strong>Хобби:</strong>
+                    ${character.is_hobby_visible || character.username === username ? `<span class="hobby">${character.hobby} ${character.username === username  ? character.is_hobby_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
+                </p>
+                <p onclick="showStat('${character.username}', 'spec_condition')">
+                    <strong>Особые условия:</strong>
+                    ${character.is_spec_condition_visible || character.username === username ? `<span class="spec-condition">${character.spec_condition} ${character.username === username  ? character.is_spec_condition_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
+                </p>
+                <p onclick="showStat('${character.username}', 'items')">
+                    <strong>Вещи:</strong>
+                    ${character.is_items_visible || character.username === username ? `<span class="items">${character.items} ${character.username === username  ? character.is_items_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
+                </p>
+            `;
+            characterList.appendChild(characterDiv); // Добавляем новую карточку в список
+        });
+    }
 };
 
 chatSocket.onclose = function(e) {

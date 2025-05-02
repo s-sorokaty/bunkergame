@@ -48,7 +48,7 @@ class GameUser(models.Model):
 
     def as_ru_dict(self,) -> dict:
         return {
-            "game_id": self.game_id,
+            "game_id": str(self.game_id),
             "game_number": self.game_number,
             "game_name": self.game_name,
             "profession": user_rules.profession[self.profession],
@@ -94,6 +94,23 @@ class GameUser(models.Model):
         self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = [user.spec_condition for user in existed_users])
         self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = [user.items for user in existed_users])
         self.is_in_game = True
+        self.save()
+
+    def show_stat(self, statname:str):
+        if statname == 'profession':
+            self.is_profession_visible = not self.is_profession_visible
+        if statname == 'health':
+            self.is_health_visible = not self.is_health_visible
+        if statname == 'bio_character':
+            self.is_bio_character_visible = not self.is_bio_character_visible   
+        if statname == 'additional_skills':
+            self.is_additional_skills_visible = not self.is_additional_skills_visible
+        if statname == 'hobby':
+            self.is_hobby_visible = not self.is_hobby_visible   
+        if statname == 'spec_condition':
+            self.is_spec_condition_visible = not self.is_spec_condition_visible
+        if statname == 'items':
+            self.is_items_visible = not self.is_items_visible                
         self.save()
 
     #FIXME need to fix
@@ -160,11 +177,18 @@ class GameEngine(models.Model):
             "bunker_descritions":self.get_ru_bunker_descriptions(),
         }
     
+    #TODO NEED TO ADD status check
+    def show_stat(self) -> None:
+
+        game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
+
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
     def join_user(self, user:User) -> None:
         existed_user = GameUser.objects.filter(game_id=self.game_id).all()
+        
         if len(existed_user) < self.user_count:
-            GameUser().create(self, user, len(existed_user)+1, existed_user)
+            GameUser().create(self, user, \
+                              get_random_value(min_val=1, max_val=len(existed_user)+1, excepted_values=[exist_user.game_number for exist_user in existed_user]), existed_user)
             game_logger(f'GameUser for User {user} CREATED')
         else:
             self.lobby_created()
@@ -172,7 +196,6 @@ class GameEngine(models.Model):
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
     def remove_user(self, user:User) -> None:
         deleted_user = GameUser.objects.filter(account_id=user, game_id=self.game_id).delete()
-        print(deleted_user)
         game_logger(f'GameUser for User {user} DELETED')
 
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
@@ -188,7 +211,9 @@ class GameEngine(models.Model):
         self.game_status = GameStatusesEnum.CREATED
         self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
-    
+
+
+
     #FIXME need to fix
     @lobby_status_check(GameStatusesEnum.CREATED)
     def start_game(self,) -> None:
