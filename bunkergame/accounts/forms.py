@@ -8,7 +8,7 @@ class UserRegistrationForm(forms.ModelForm):
     password = forms.CharField(
         label='Пароль:',
         widget=forms.PasswordInput,
-        help_text='Пароль должен содержать хотя бы одну цифру'
+
     )
 
     class Meta:
