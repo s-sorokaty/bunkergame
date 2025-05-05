@@ -1,93 +1,117 @@
 {% extends 'base.html' %}
 
-{% block title %}Главная страница{% endblock %}
+{% block title %}Вход{% endblock %}
 
 {% block content %}
 <style>
-    .container {
-        max-width: 400px;
-        margin: 50px auto;
-        padding: 20px;
-        background-color: rgba(0, 0, 0, 0.8); /* Полупрозрачный фон */
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    }
-
-    h2 {
-        text-align: center;
-        margin-bottom: 20px;
-        color: #ffffff;
-    }
-
-    .login-form {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .form-group {
-        margin-bottom: 15px;
-    }
-
-    input[type="text"],
-    input[type="password"] {
-        padding: 10px;
-        border: none;
-        border-radius: 5px;
-        background-color: #ffffff;
-        color: #333;
-        font-size: 16px;
-        transition: border 0.3s;
-    }
-
-    input[type="text"]:focus,
-    input[type="password"]:focus {
-        border: 2px solid #28a745; /* Зеленая рамка при фокусе */
-        outline: none;
-    }
-
-    button {
-        padding: 10px;
-        border: none;
-        border-radius: 5px;
-        background-color: #28a745; /* Зеленый цвет */
-        color: white;
-        font-size: 16px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-
-    button:hover {
-        background-color: #218838; /* Темнее при наведении */
-    }
-
-    .register-link {
-        text-align: center;
-        margin-top: 15px;
-    }
-
-    .register-link a {
-        color: #ffffff;
-        text-decoration: underline;
-    }
+  .container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  }
+  h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #ffffff;
+  }
+  .login-form {
+    display: flex;
+    flex-direction: column;
+  }
+  .form-group {
+    margin-bottom: 15px;
+  }
+  .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #ffffff;
+  }
+  .form-group input {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #ffffff;
+    color: #333;
+    font-size: 16px;
+    transition: border 0.3s;
+  }
+  .form-group input:focus {
+    border: 2px solid #28a745;
+    outline: none;
+  }
+  .error-notice {
+    background-color: #dc3545;
+    color: #ffffff;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 14px;
+  }
+  button {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  button:hover {
+    background-color: #218838;
+  }
+  .register-link {
+    text-align: center;
+    margin-top: 15px;
+  }
+  .register-link a {
+    color: #ffffff;
+    text-decoration: underline;
+  }
 </style>
 
 <div class="container">
-    <h2>Вход</h2>
-    <form method="post" class="login-form">
-        {% csrf_token %}
-        <div class="form-group">
-            <label>Имя пользователя:</label>
-            <input type="text" name="username" required>
-        </div>
-        <div class="form-group">
-            <label>Пароль:</label>
-            <input type="password" name="password" required>
-        </div>
-        <button type="submit">Войти</button>
-    </form>
-    <p class="register-link">Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+  <h2>Вход</h2>
+
+  <form method="post" class="login-form">
+    {% csrf_token %}
+
     {% if error %}
-    <p style="color:red;">{{ error }}</p>
+      <div class="error-notice">{{ error }}</div>
     {% endif %}
+
+    <div class="form-group">
+      <label for="id_username">Имя пользователя:</label>
+      <input
+        type="text"
+        name="username"
+        id="id_username"
+        placeholder="Введите ваш логин"
+        required
+      >
+    </div>
+
+    <div class="form-group">
+      <label for="id_password">Пароль:</label>
+      <input
+        type="password"
+        name="password"
+        id="id_password"
+        placeholder="Введите пароль"
+        required
+      >
+    </div>
+
+    <button type="submit">Войти</button>
+  </form>
+
+  <p class="register-link">
+    Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a>
+  </p>
 </div>
 {% endblock %}
