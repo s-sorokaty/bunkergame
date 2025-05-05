@@ -20,7 +20,6 @@ def send_game_message(game_id:UUID, message:dict):
             'message': {**message, 'type': 'game_status'}
         }
     )
-    
 class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.game_id = self.scope['url_route']['kwargs']['game_id']

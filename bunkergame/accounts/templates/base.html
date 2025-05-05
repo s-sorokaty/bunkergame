@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Шаблон Бункера{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body {
             background-image: url('https://cdn2.unrealengine.com/amnesia-the-bunker-is-a-chilling-underground-obstacle-course-of-horror-1920x1080-6dc65969cdb9.jpg'); /* Замените на путь к вашему изображению */
@@ -62,6 +64,30 @@
             text-align: center;
         }
     </style>
+    <script>
+        function showSuccess(message) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Успешно',
+                text: message,
+                confirmButtonText: 'ОК',
+                background: '#333',  // Темный фон
+                color: '#fff',        // Белый текст
+                confirmButtonColor: '#4CAF50'  // Цвет кнопки
+            });
+        }
+        function showError(message) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ошибка',
+                text: message,
+                confirmButtonText: 'ОК',
+                background: '#333',  // Темный фон
+                color: '#fff',        // Белый текст
+                confirmButtonColor: '#f44336'  // Цвет кнопки
+            });
+        }
+    </script>
 </head>
 <body>
     <header>

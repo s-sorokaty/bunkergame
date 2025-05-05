@@ -5,9 +5,8 @@ from uuid import uuid4, UUID
 from django.db import models
 from collections import Counter
 from django.contrib.auth.models import User
-from django.core.exceptions import BadRequest
 
-from .utils import lobby_rules, user_rules
+from .utils import lobby_rules, user_rules, exceptions
 from .utils.helpers import game_logger, get_random_value, generate_name, ru_game_status
 
 
@@ -145,7 +144,7 @@ class GameEngine(models.Model):
                 if self.game_status == status:
                     return func(self, *arg, **kwarg)
                 else:
-                    raise BadRequest(f"Current status is {self.game_status} needed {status}")
+                    raise exceptions.LobbyStatusCheckMismatch(f"Status error {self.game_status} needed {status}")
             return wrapper
         return out_wrap
     

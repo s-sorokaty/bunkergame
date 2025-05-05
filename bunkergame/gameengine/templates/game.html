@@ -160,13 +160,17 @@
             padding: 10px 15px; /* Уменьшенный отступ для кнопки */
         }
     }
+    .character.highlight {
+        border: 2px solid #ffeb3b; /* Яркая рамка для выделения */
+        background-color: rgba(255, 235, 59, 0.2); /* Полупрозрачный фон для выделения */
+    }
 </style>
 
 <div class="character-window">
     <h2>Бункер ({{game_info.game_name}})</h2>
     
     <div class="nav-bar">
-        <a href="{% url 'gameengine:start_game' game_info.game_id %}" class="nav-button">Начать игру</a>
+        <button class="nav-button" onclick="startGame()" class="nav-button">Начать игру</button>
         <a href="{% url 'gameengine:leave_game' game_info.game_id %}" class="nav-button">Выход</a>
     </div>
 
@@ -187,7 +191,7 @@
 
     <div class="character-list" id="user_list_{{ game_info.game_id}}">
         {% for character in game_users %}
-            <div class="character">
+                <div class="character{% if character.username == game_info.request_username %} highlight{% endif %}">
                 <div class="character-number">{{ character.game_number }}</div> 
                 <h3>{{ character.game_name }}<div>({{character.username}})</div></h3>
                 
@@ -323,6 +327,24 @@ function showStat(e_username, stat) {
     }
 }
 
+function startGame() {
+    fetch(`/game/start/${gameId}`)
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.err || 'Неизвестная ошибка');
+            });
+        }
+        return response.json();
+    })
+    .then(res =>{
+        showSuccess(res.message)
+    })
+    .catch(error => {
+        showError(error.message);
+    });
+}
+
 chatSocket.onmessage = function(e) {
     const data = JSON.parse(e.data);
     console.log(data.message);
@@ -335,7 +357,12 @@ chatSocket.onmessage = function(e) {
         
         data.message.game_users.forEach(character => {
             const characterDiv = document.createElement('div');
-            characterDiv.className = 'character';
+            if (character.username === username){
+                characterDiv.className = 'character highlight';
+
+            }else{
+                characterDiv.className = 'character';
+            }
             characterDiv.id = `character-${character.game_number}`;
             characterDiv.innerHTML = `
                 <div class="character-number">${character.game_number}</div>
