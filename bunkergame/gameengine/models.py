@@ -9,7 +9,6 @@ from django.contrib.auth.models import User
 from .utils import lobby_rules, user_rules, exceptions
 from .utils.helpers import game_logger, get_random_value, generate_name, ru_game_status
 
-
 class GameStatusesEnum(models.IntegerChoices):
     NOT_CREATED = 0
     CREATED = 1
@@ -24,6 +23,7 @@ class GameUser(models.Model):
     game_id = models.ForeignKey("GameEngine", on_delete=models.CASCADE)
     game_number = models.IntegerField(default=0)
     game_name = models.CharField(max_length=50, default='')
+
     profession = models.IntegerField()
     health = models.IntegerField()
     bio_character = models.IntegerField()
@@ -95,21 +95,35 @@ class GameUser(models.Model):
         self.is_in_game = True
         self.save()
 
-    def show_stat(self, statname:str):
+    def show_stat(self, statname:str, callback:callable=None):
         if statname == 'profession':
-            self.is_profession_visible = not self.is_profession_visible
+            if self.is_profession_visible: raise exceptions.StatAlreadyShowed
+            self.is_profession_visible = True
+        
         if statname == 'health':
-            self.is_health_visible = not self.is_health_visible
+            if self.is_health_visible: raise exceptions.StatAlreadyShowed
+            self.is_health_visible = True
+
         if statname == 'bio_character':
-            self.is_bio_character_visible = not self.is_bio_character_visible   
+            if self.is_bio_character_visible: raise exceptions.StatAlreadyShowed
+            self.is_bio_character_visible = True
+
         if statname == 'additional_skills':
-            self.is_additional_skills_visible = not self.is_additional_skills_visible
+            if self.is_additional_skills_visible: raise exceptions.StatAlreadyShowed
+            self.is_additional_skills_visible = True
+
         if statname == 'hobby':
-            self.is_hobby_visible = not self.is_hobby_visible   
+            if self.is_hobby_visible: raise exceptions.StatAlreadyShowed
+            self.is_hobby_visible = True
+
         if statname == 'spec_condition':
-            self.is_spec_condition_visible = not self.is_spec_condition_visible
+            if self.is_spec_condition_visible: raise exceptions.StatAlreadyShowed
+            self.is_spec_condition_visible = True
+
         if statname == 'items':
-            self.is_items_visible = not self.is_items_visible                
+            if self.is_items_visible: raise exceptions.StatAlreadyShowed
+            self.is_items_visible = True               
+
         self.save()
 
     #FIXME need to fix
@@ -131,6 +145,8 @@ class GameEngine(models.Model):
     bunker_descritions = models.IntegerField(null=True)
     user_count = models.IntegerField(null=True)
     turn = models.IntegerField(default=0)
+    user_number_turn = models.IntegerField(default=0)
+
     game_status = models.IntegerField(choices=GameStatusesEnum, default=GameStatusesEnum.NOT_CREATED)
     
     owner_id = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
@@ -174,11 +190,24 @@ class GameEngine(models.Model):
             "game_status":ru_game_status[self.game_status],
             "map_descriptions":self.get_ru_map_descriptions(),
             "bunker_descritions":self.get_ru_bunker_descriptions(),
+            "turn":self.turn,
+            "user_number_turn":self.user_number_turn
         }
     
-    #TODO NEED TO ADD status check
-    def show_stat(self) -> None:
-
+    @lobby_status_check(GameStatusesEnum.TURNING)
+    def show_stat(self, statname:str, game_user:GameUser) -> None:
+        if self.user_number_turn == game_user.game_number:
+            game_user.show_stat(statname)
+            self.user_number_turn += 1
+            self.save()
+        else:
+            raise exceptions.WrongPlayerTurn
+        
+        if self.user_number_turn > self.user_count:
+            self.user_number_turn = 0
+            self.end_turn()
+            self.save()
+            
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
 
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
@@ -211,12 +240,12 @@ class GameEngine(models.Model):
         self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
 
-
-
     #FIXME need to fix
     @lobby_status_check(GameStatusesEnum.CREATED)
     def start_game(self,) -> None:
         self.game_status = GameStatusesEnum.IN_PROGRESS
+        self.make_turn()
+        self.user_number_turn = 1
         self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.IN_PROGRESS}')
 
@@ -224,7 +253,7 @@ class GameEngine(models.Model):
     @lobby_status_check(GameStatusesEnum.IN_PROGRESS)
     def make_turn(self,) -> None:
         self.game_status = GameStatusesEnum.TURNING
-        self._turn += 1
+        self.turn += 1
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.TURNING}')
     
     #FIXME need to fix

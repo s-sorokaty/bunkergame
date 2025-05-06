@@ -164,6 +164,9 @@
         border: 2px solid #ffeb3b; /* Яркая рамка для выделения */
         background-color: rgba(255, 235, 59, 0.2); /* Полупрозрачный фон для выделения */
     }
+    .character.highlight-green {
+        border: 5px solid green; /* Зеленая рамка */
+    }
 </style>
 
 <div class="character-window">
@@ -184,14 +187,17 @@
         <p>{{ game_info.map_descriptions }}</p>
     </div>
 
-    <div class="status-window">
+    <div id="game-status" class="status-window">
         <h3>Текущий статус игры</h3>
-        <p id="game-status">{{game_info.game_status}}</p>
+        <p>Cтатус: {{game_info.game_status}}</p>
+        <p>Номер хода: {{game_info.turn}}</p>
+        <p>Ход игрока: {{game_info.user_number_turn}}</p>
     </div>
 
     <div class="character-list" id="user_list_{{ game_info.game_id}}">
         {% for character in game_users %}
-                <div class="character{% if character.username == game_info.request_username %} highlight{% endif %}">
+                <div class="character{% if character.username == game_info.request_username %} highlight{% endif %} {% if character.game_number == game_info.user_number_turn %} highlight-green{% endif %}">  
+
                 <div class="character-number">{{ character.game_number }}</div> 
                 <h3>{{ character.game_name }}<div>({{character.username}})</div></h3>
                 
@@ -315,15 +321,24 @@
 </div>
 
 <script>
-const gameId = "{{ game_info.game_id }}"; // Предполагаем, что game_id передан в контексте
-const username = "{{ game_info.request_username }}"; // Предполагаем, что username передан в контексте
-const chatSocket = new WebSocket(`ws://${window.location.host}/ws/game/${gameId}/`);
-
 function showStat(e_username, stat) {
     // Проверяем, является ли пользователь владельцем персонажа
     if (e_username == username){
-        fetch(`/game/showstat/${gameId}/?statname=${stat}`, {})
-        .then(response => response.json())
+        fetch(`/game/showstat/${gameId}/?statname=${stat}`)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.err || 'Неизвестная ошибка');
+                });
+            }
+            return response.json();
+        })
+        .then(res =>{
+            showSuccess(res.message)
+        })
+        .catch(error => {
+            showError(error.message);
+        });
     }
 }
 
@@ -345,71 +360,108 @@ function startGame() {
     });
 }
 
-chatSocket.onmessage = function(e) {
-    const data = JSON.parse(e.data);
-    console.log(data.message);
+const gameId = "{{ game_info.game_id }}"; // Предполагаем, что game_id передан в контексте
+const username = "{{ game_info.request_username }}"; // Предполагаем, что username передан в контексте
+let chatSocket;
+let reconnectAttempts = 0; // Счетчик попыток переподключения
+const maxReconnectAttempts = 5; // Максимальное количество попыток переподключения
 
-    if (data.message.type === 'game_status') {
-        document.getElementById("game-status").innerText = data.message.game_info.game_status;
+function connect() {
+    chatSocket = new WebSocket(`ws://${window.location.host}/ws/game/${gameId}/`);
 
-        const characterList = document.getElementById(`user_list_${data.message.game_info.game_id}`);
-        characterList.innerHTML = ''; // Очищаем текущие карточки
-        
-        data.message.game_users.forEach(character => {
-            const characterDiv = document.createElement('div');
-            if (character.username === username){
-                characterDiv.className = 'character highlight';
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        console.log(data.message);
 
-            }else{
-                characterDiv.className = 'character';
-            }
-            characterDiv.id = `character-${character.game_number}`;
-            characterDiv.innerHTML = `
-                <div class="character-number">${character.game_number}</div>
-                <h3>${character.game_name}<div>(${character.username})</div></h3>
-                <p onclick="showStat('${character.username}', 'profession')">
-                    <strong>Профессия:</strong>
-                    ${character.is_profession_visible || character.username === username ? `<span class="profession">${character.profession} ${character.username === username  ? character.is_profession_visible ? `(Показано)` : `(Не показано)` : `<div/>`} </span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'health')">
-                    <strong>Здоровье:</strong>
-                    ${character.is_health_visible || character.username === username ? `<span class="health">${character.health} ${character.username === username  ? character.is_health_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'bio_character')">
-                    <strong>БИО:</strong>
-                    ${character.is_bio_character_visible || character.username === username ? `<span class="bio">${character.bio_character} ${character.username === username  ? character.is_bio_character_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'additional_skills')">
-                    <strong>Дополнительные навыки:</strong>
-                    ${character.is_additional_skills_visible || character.username === username ? `<span class="additional-skills">${character.additional_skills} ${character.username === username  ? character.is_additional_skills_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'hobby')">
-                    <strong>Хобби:</strong>
-                    ${character.is_hobby_visible || character.username === username ? `<span class="hobby">${character.hobby} ${character.username === username  ? character.is_hobby_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'spec_condition')">
-                    <strong>Особые условия:</strong>
-                    ${character.is_spec_condition_visible || character.username === username ? `<span class="spec-condition">${character.spec_condition} ${character.username === username  ? character.is_spec_condition_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'items')">
-                    <strong>Вещи:</strong>
-                    ${character.is_items_visible || character.username === username ? `<span class="items">${character.items} ${character.username === username  ? character.is_items_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
+        if (data.message.type === 'game_status') {
+            // Обработка статуса игры
+            document.getElementById("game-status").innerHTML = `
+            <h3>Текущий статус игры</h3>
+            <p>Cтатус: ${data.message.game_info.game_status}</p>
+            <p>Номер хода: ${data.message.game_info.turn}</p>
+            <p>Ход игрока: ${data.message.game_info.user_number_turn}</p>
             `;
-            characterList.appendChild(characterDiv); // Добавляем новую карточку в список
-        });
-    }
-};
 
-chatSocket.onclose = function(e) {
-    console.error('Chat socket closed unexpectedly');
-};
+            const characterList = document.getElementById(`user_list_${data.message.game_info.game_id}`);
+            characterList.innerHTML = ''; // Очищаем текущие карточки
+            
+            data.message.game_users.forEach(character => {
+                const characterDiv = document.createElement('div');
+                if (character.username === username){
+                    characterDiv.className = 'character highlight';
+                    if (character.game_number === data.message.game_info.user_number_turn){
+                        characterDiv.className = 'character highlight highlight-green';
+                    }
+                } else {
+                    characterDiv.className = 'character';
+                    if (character.game_number === data.message.game_info.user_number_turn){
+                        characterDiv.className = 'character highlight-green';
+                    }
+                }
 
-function sendMessage(message) {
-    chatSocket.send(JSON.stringify({
-        'message': message
-    }));
+                characterDiv.id = `character-${character.game_number}`;
+                characterDiv.innerHTML = `
+                    <div class="character-number">${character.game_number}</div>
+                    <h3>${character.game_name}<div>(${character.username})</div></h3>
+                    <p onclick="showStat('${character.username}', 'profession')">
+                        <strong>Профессия:</strong>
+                        ${character.is_profession_visible || character.username === username ? `<span class="profession">${character.profession} ${character.username === username ? character.is_profession_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'health')">
+                        <strong>Здоровье:</strong>
+                        ${character.is_health_visible || character.username === username ? `<span class="health">${character.health} ${character.username === username ? character.is_health_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'bio_character')">
+                        <strong>БИО:</strong>
+                        ${character.is_bio_character_visible || character.username === username ? `<span class="bio">${character.bio_character} ${character.username === username ? character.is_bio_character_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'additional_skills')">
+                        <strong>Дополнительные навыки:</strong>
+                        ${character.is_additional_skills_visible || character.username === username ? `<span class="additional-skills">${character.additional_skills} ${character.username === username ? character.is_additional_skills_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'hobby')">
+                        <strong>Хобби:</strong>
+                        ${character.is_hobby_visible || character.username === username ? `<span class="hobby">${character.hobby} ${character.username === username ? character.is_hobby_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'spec_condition')">
+                        <strong>Особые условия:</strong>
+                        ${character.is_spec_condition_visible || character.username === username ? `<span class="spec-condition">${character.spec_condition} ${character.username === username ? character.is_spec_condition_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'items')">
+                        <strong>Вещи:</strong>
+                        ${character.is_items_visible || character.username === username ? `<span class="items">${character.items} ${character.username === username ? character.is_items_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                `;
+                characterList.appendChild(characterDiv); // Добавляем новую карточку в список
+            });
+        }
+        if (data.message.type === 'game_info_message') {
+            if (data.message.error == false) {
+                showSuccess(data.message.message);
+            } else {
+                showError(data.message.message);
+            }
+        }
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly');
+        reconnect();
+    };
 }
+
+function reconnect() {
+    if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        console.log(`Попытка переподключения ${reconnectAttempts}/${maxReconnectAttempts}...`);
+        setTimeout(connect, 2000); // Подождите 2 секунды перед попыткой переподключения
+    } else {
+        console.error('Максимальное количество попыток переподключения достигнуто.');
+    }
+}
+
+// Первоначальное подключение
+connect();
 </script>
 
 {% endblock %}
