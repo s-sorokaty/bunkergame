@@ -1,2 +1,0 @@
-class LobbyStatusCheckMismatch(Exception):
-    pass
