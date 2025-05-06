@@ -40,13 +40,14 @@ class GameUser(models.Model):
     is_spec_condition_visible = models.BooleanField(default=False)
     is_items_visible = models.BooleanField(default=False)
 
-    is_in_game = models.BooleanField(default=False)
-    vote_id = models.UUIDField(default=uuid4, editable=True, null=True)
+    is_in_game = models.BooleanField(default=True)
+    vote_id = models.UUIDField(editable=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def as_ru_dict(self,) -> dict:
         return {
+            "user_id": str(self.user_id),
             "game_id": str(self.game_id),
             "game_number": self.game_number,
             "game_name": self.game_name,
@@ -58,6 +59,7 @@ class GameUser(models.Model):
             "spec_condition": user_rules.spec_condition[self.spec_condition],
             "items": user_rules.items[self.items],
             "username": self.account_id.username,
+            "is_in_game":self.is_in_game,
             "is_profession_visible": self.is_profession_visible,
             "is_health_visible": self.is_health_visible,
             "is_bio_character_visible": self.is_bio_character_visible,
@@ -80,7 +82,6 @@ class GameUser(models.Model):
         self.hobby = get_random_value(max_val=len(user_rules.hobby) - 1, excepted_values = [user.hobby for user in existed_users])
         self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = [user.spec_condition for user in existed_users])
         self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = [user.items for user in existed_users])
-        self.is_in_game = True
         self.save()
     
     def regenerate_user(self, existed_users:list[GameUser]):
@@ -92,7 +93,6 @@ class GameUser(models.Model):
         self.hobby = get_random_value(max_val=len(user_rules.hobby) - 1, excepted_values = [user.hobby for user in existed_users])
         self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = [user.spec_condition for user in existed_users])
         self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = [user.items for user in existed_users])
-        self.is_in_game = True
         self.save()
 
     def show_stat(self, statname:str, callback:callable=None):
@@ -125,16 +125,19 @@ class GameUser(models.Model):
             self.is_items_visible = True               
 
         self.save()
-
-    #FIXME need to fix
+    
+    @staticmethod
+    def get_user_in_game(game_id:UUID):
+        return GameUser.objects.filter(game_id=game_id, is_in_game=True).all()
+    
     def make_vote(self, voted_user_id: UUID) -> None:
-        if self.user_id == voted_user_id:
-            return
-        
-        #TODO need to check in game users
-        
         self.vote_id = voted_user_id
+        self.save()
         game_logger(f'Player {self.user_id} voted for {voted_user_id}')
+    
+    def kick_from_game(self,) -> None:
+        self.is_in_game = False
+        self.save()
 
 
 class GameEngine(models.Model):
@@ -191,7 +194,8 @@ class GameEngine(models.Model):
             "map_descriptions":self.get_ru_map_descriptions(),
             "bunker_descritions":self.get_ru_bunker_descriptions(),
             "turn":self.turn,
-            "user_number_turn":self.user_number_turn
+            "user_number_turn":self.user_number_turn,
+            "all_votes": self.get_all_votes()
         }
     
     @lobby_status_check(GameStatusesEnum.TURNING)
@@ -240,7 +244,7 @@ class GameEngine(models.Model):
         self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
 
-    #FIXME need to fix
+
     @lobby_status_check(GameStatusesEnum.CREATED)
     def start_game(self,) -> None:
         self.game_status = GameStatusesEnum.IN_PROGRESS
@@ -249,29 +253,37 @@ class GameEngine(models.Model):
         self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.IN_PROGRESS}')
 
-    #FIXME need to fix
     @lobby_status_check(GameStatusesEnum.IN_PROGRESS)
     def make_turn(self,) -> None:
         self.game_status = GameStatusesEnum.TURNING
         self.turn += 1
+        self.user_number_turn = 1
+        self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.TURNING}')
     
-    #FIXME need to fix
+
     @lobby_status_check(GameStatusesEnum.TURNING)
     def end_turn(self,) -> None:
         self.game_status = GameStatusesEnum.VOTING
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.VOTING}')
 
+
+    @lobby_status_check(GameStatusesEnum.VOTING)
+    def make_vote(self, game_user:GameUser, vote_user_id:UUID):
+        game_user.make_vote(vote_user_id)
+
+    def get_all_votes(self,):
+        return Counter([GameUser.objects.get(user_id=user.vote_id).game_name for user in GameUser.get_user_in_game(self.game_id) if user.vote_id]).most_common()
+
     #FIXME need to fix
     @lobby_status_check(GameStatusesEnum.VOTING)
     def end_vote(self,) -> None | str:
-        if self._turn > 1:
-            all_votes:list[tuple[UUID, int]] = Counter([user.vote_id for user in self.get_users_in_game() if user.vote_id]).most_common()
+        if self.turn > 1:
+            all_votes:list[tuple[UUID, int]] = Counter([game_user.vote_id for game_user in GameUser.get_user_in_game(self.game_id) if game_user.vote_id]).most_common()
 
             if len(all_votes):
                 nominante_to_kick = [all_votes[0]]
                 max_voted = all_votes[0][1]
-                print(all_votes)
 
                 for vote_id, vote_count in all_votes[1:]:
                     if max_voted == vote_count:
@@ -280,31 +292,35 @@ class GameEngine(models.Model):
                 if len(nominante_to_kick) > 1:
                     all_voted_idx = get_random_value(0, 1)
                 
+                print("KICKED ", nominante_to_kick[all_voted_idx][0])
                 self.kick_from_game_by_id(nominante_to_kick[all_voted_idx][0])
-
-        for user in self.get_all_users():
-            user.vote_id = None
+        
+        for game_user in GameUser.objects.filter(game_id=self.game_id).all():
+            game_user.make_vote(None)
 
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.IN_PROGRESS}')
 
-        if len(self.get_users_in_game()) == self._user_count/2:
+        if len(GameUser.get_user_in_game(self.game_id)) == self.user_count/2:
             return self.game_ended()
-            
-        self.game_status = GameStatusesEnum.IN_PROGRESS
+        else:
+            self.game_status = GameStatusesEnum.IN_PROGRESS
+            self.save()
+            self.make_turn()
 
-    #FIXME need to fix
     @lobby_status_check(GameStatusesEnum.VOTING)
     def game_ended(self,) -> str:
-        nn_res = 'GAME ENDED TEMPLATE'
-        self.game_status = GameStatusesEnum.END
+        self.game_status = GameStatusesEnum.END        
+        self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.END}')
-        return nn_res
 
+    @lobby_status_check(GameStatusesEnum.END)
+    def generate_ending(self,) -> str:
+        req_to_nn = "THIS IS ZAEBIS ENDING"
+        return req_to_nn
 
-    #FIXME need to fix
     @lobby_status_check(GameStatusesEnum.VOTING)
     def kick_from_game_by_id(self, user_id:UUID) -> None:
-        for user in self.get_all_users():
-            if user.user_id == user_id:
-                user.is_in_game = False
-                game_logger(f'GameEngine {self.game_id} player {user.user_id} kicked')
+        game_user = GameUser.objects.get(user_id=user_id)
+        game_user.kick_from_game()
+        game_logger(f'GameEngine {self.game_id} player {game_user.user_id} kicked')
+                

@@ -6,3 +6,9 @@ class StatAlreadyShowed(Exception):
 
 class WrongPlayerTurn(Exception):
     pass
+
+class OnlyOwner(Exception):
+    pass
+
+class KickedUser(Exception):
+    pass

@@ -16,6 +16,8 @@ from django.db.models.signals import post_save
 def game_engine_updated(sender, instance:GameEngine, created, **kwargs):
     if not created:
         sync_game(instance.game_id)
+        if instance.game_status == 5:
+            send_info(instance.game_id, instance.generate_ending())
 
 def send_game_message(game_id:UUID, message:dict, message_type:str='game_status'):
     channel_layer = get_channel_layer()

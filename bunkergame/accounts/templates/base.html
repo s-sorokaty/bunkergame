@@ -76,6 +76,17 @@
                 confirmButtonColor: '#4CAF50'  // Цвет кнопки
             });
         }
+        function showInfo(message) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Успешно',
+                text: message,
+                confirmButtonText: 'ОК',
+                background: '#333',  // Темный фон
+                color: '#fff',        // Белый текст
+                confirmButtonColor: '#4CAF50'  // Цвет кнопки
+            });
+        }
         function showError(message) {
             Swal.fire({
                 icon: 'error',
