@@ -23,7 +23,7 @@ class GameUser(models.Model):
     account_id = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     game_id = models.ForeignKey("GameEngine", on_delete=models.CASCADE)
     game_number = models.IntegerField(default=0)
-    game_name = models.CharField(max_length=50, default='')
+    game_name = models.TextField(max_length=50, default='')
 
     age = models.IntegerField(default=-1)
     profession = models.IntegerField()
