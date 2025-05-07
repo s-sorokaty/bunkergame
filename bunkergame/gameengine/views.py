@@ -15,7 +15,7 @@ def create_empty_game(request:HttpRequest):
         game_engine = GameEngine()
         game_name = request.POST['game_name']
         user_count = request.POST['user_count']
-        game_engine.create_empty_game(user, game_name, user_count)
+        game_engine.create_game(user, game_name, user_count)
         return redirect(f"/game/join/{game_engine.game_id}")
     else: return HttpResponseBadRequest("Wrong request method") 
 
@@ -29,7 +29,7 @@ def join_game(request:HttpRequest, game_id:UUID):
             user = User.objects.get(id=request.user.id)
             if not user.username in users_in_game: 
                 game_engine.join_user(user)
-            
+
             game_users = GameUser.objects.filter(game_id=game_engine.game_id).all()
         
             sync_game(game_id)
@@ -39,8 +39,8 @@ def join_game(request:HttpRequest, game_id:UUID):
                                              })
         except exceptions.LobbyStatusCheckMismatch:
             return redirect('/')
-
-
+        except Exception as e:
+            return redirect('/')
     return HttpResponseBadRequest("Wrong request method") 
        
 @decorators.login_required(login_url='/accounts/login/')
@@ -75,7 +75,6 @@ def show_stat(request:HttpRequest, game_id:UUID):
     user = User.objects.get(id=request.user.id)
     game_user = GameUser.objects.filter(game_id=game_engine.game_id, account_id=user).first()
     try:
-        if not game_user.is_in_game: raise exceptions.KickedUser
         game_engine.show_stat(statname, game_user)
         sync_game(game_id)
         return JsonResponse({'message':'Вы показали свою характеристику'}, status=200)
@@ -111,13 +110,10 @@ def end_vote(request:HttpRequest, game_id:UUID):
     user = User.objects.get(id=request.user.id)
     game_user = GameUser.objects.get(game_id=game_engine.game_id, account_id=user)
     try:
-        if not game_user.is_in_game: raise exceptions.KickedUser
         if game_user.account_id != game_engine.owner_id: raise exceptions.OnlyOwner
         game_engine.end_vote()
         sync_game(game_id)
         return JsonResponse({'message':'Голосование закончено'}, status=200)
-    except exceptions.KickedUser:
-        return JsonResponse({'err':'Вы выбыли из убежища'}, status=400)
     except exceptions.LobbyStatusCheckMismatch:
         return JsonResponse({'err':'Сейчас нет голосования'}, status=400)
     except exceptions.OnlyOwner as e:

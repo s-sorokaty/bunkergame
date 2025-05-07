@@ -5,8 +5,9 @@ from uuid import uuid4, UUID
 from django.db import models
 from collections import Counter
 from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 
-from .utils import lobby_rules, user_rules, exceptions
+from .utils import lobby_rules, user_rules, exceptions, nn_request
 from .utils.helpers import game_logger, get_random_value, generate_name, ru_game_status
 
 class GameStatusesEnum(models.IntegerChoices):
@@ -24,6 +25,7 @@ class GameUser(models.Model):
     game_number = models.IntegerField(default=0)
     game_name = models.CharField(max_length=50, default='')
 
+    age = models.IntegerField(default=-1)
     profession = models.IntegerField()
     health = models.IntegerField()
     bio_character = models.IntegerField()
@@ -53,7 +55,7 @@ class GameUser(models.Model):
             "game_name": self.game_name,
             "profession": user_rules.profession[self.profession],
             "health": user_rules.health[self.health],
-            "bio_character": user_rules.bio_character[self.bio_character],
+            "bio_character": str(self.age) + " лет, " + user_rules.bio_character[self.bio_character],
             "additional_skills": user_rules.additional_skills[self.additional_skills],
             "hobby": user_rules.hobby[self.hobby],
             "spec_condition": user_rules.spec_condition[self.spec_condition],
@@ -68,7 +70,19 @@ class GameUser(models.Model):
             "is_spec_condition_visible": self.is_spec_condition_visible,
             "is_items_visible": self.is_items_visible
             }
-        
+    
+    def as_nn_promt(self,) -> str:
+        return f"""
+            Имя: {self.game_name}
+            Профессия: {user_rules.profession[self.profession]}
+            Здоровье: {user_rules.health[self.health]}
+            Биология: {str(self.age) + " лет, " + user_rules.bio_character[self.bio_character]}
+            Дополнительные навыки: {user_rules.additional_skills[self.additional_skills]}
+            Хобби: {user_rules.hobby[self.hobby]}
+            Особые условия: {user_rules.spec_condition[self.spec_condition]}
+            Вещи: {user_rules.items[self.items]}
+            """   
+
     def create(self, game_id:GameEngine, user:User, game_number:int, existed_users:list[GameUser]):
         self.user_id = uuid4()
         self.game_id = game_id
@@ -82,6 +96,7 @@ class GameUser(models.Model):
         self.hobby = get_random_value(max_val=len(user_rules.hobby) - 1, excepted_values = [user.hobby for user in existed_users])
         self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = [user.spec_condition for user in existed_users])
         self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = [user.items for user in existed_users])
+        self.age = get_random_value(min_val=16, max_val=70)
         self.save()
     
     def regenerate_user(self, existed_users:list[GameUser]):
@@ -93,6 +108,7 @@ class GameUser(models.Model):
         self.hobby = get_random_value(max_val=len(user_rules.hobby) - 1, excepted_values = [user.hobby for user in existed_users])
         self.spec_condition = get_random_value(max_val=len(user_rules.spec_condition) - 1, excepted_values = [user.spec_condition for user in existed_users])
         self.items = get_random_value(max_val=len(user_rules.items) - 1, excepted_values = [user.items for user in existed_users])
+        self.age = get_random_value(min_val=16, max_val=70)
         self.save()
 
     def show_stat(self, statname:str, callback:callable=None):
@@ -149,16 +165,17 @@ class GameEngine(models.Model):
     user_count = models.IntegerField(null=True)
     turn = models.IntegerField(default=0)
     user_number_turn = models.IntegerField(default=0)
+    ending = models.CharField(max_length=50, default='Конец пока неизвестен') 
 
     game_status = models.IntegerField(choices=GameStatusesEnum, default=GameStatusesEnum.NOT_CREATED)
-    
+
     owner_id = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def lobby_status_check(status:GameStatusesEnum):
         def out_wrap(func:callable):
-            functools.wraps(func)
+            @functools.wraps(func)
             def wrapper(self, *arg, **kwarg):
                 if self.game_status == status:
                     return func(self, *arg, **kwarg)
@@ -167,7 +184,7 @@ class GameEngine(models.Model):
             return wrapper
         return out_wrap
     
-    def create_empty_game(self, owner_id:User, game_name:str, user_count=6):
+    def create_game(self, owner_id:User, game_name:str, user_count=4):
         game_id = uuid4()
         self.game_id = game_id
         self.owner_id = owner_id
@@ -192,51 +209,74 @@ class GameEngine(models.Model):
             "user_count":self.user_count,
             "game_status":ru_game_status[self.game_status],
             "map_descriptions":self.get_ru_map_descriptions(),
+            "ending": self.ending,
             "bunker_descritions":self.get_ru_bunker_descriptions(),
             "turn":self.turn,
             "user_number_turn":self.user_number_turn,
-            "all_votes": self.get_all_votes()
+            "all_votes": self.get_all_votes(),
         }
     
+    def as_nn_promt(self,) -> str:
+        return f"""
+            Описание бункера: {self.map_descriptions}
+            Описание карты: {self.map_descriptions}
+            """   
+    
+    @lobby_status_check(GameStatusesEnum.TURNING)
+    def set_next_game_number_turn(self, game_number:int=None) -> None:
+        if game_number != None:
+            self.user_number_turn = game_number
+            self.save()
+            return
+        
+        game_user = GameUser.get_user_in_game(self.game_id).order_by('game_number')
+        game_user = game_user.filter(game_number__gt=self.user_number_turn)
+
+        if game_user:
+            self.user_number_turn = game_user[0].game_number
+        else:
+            self.user_number_turn = 0
+        self.save()
+
     @lobby_status_check(GameStatusesEnum.TURNING)
     def show_stat(self, statname:str, game_user:GameUser) -> None:
         if self.user_number_turn == game_user.game_number:
             game_user.show_stat(statname)
-            self.user_number_turn += 1
-            self.save()
+            self.set_next_game_number_turn()
+
+            if self.user_number_turn == 0:
+                self.end_turn()
+    
+            game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
         else:
             raise exceptions.WrongPlayerTurn
         
-        if self.user_number_turn > self.user_count:
-            self.user_number_turn = 0
-            self.end_turn()
-            self.save()
-            
-        game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
 
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
     def join_user(self, user:User) -> None:
         existed_user = GameUser.objects.filter(game_id=self.game_id).all()
         
-        if len(existed_user) < self.user_count:
+        if existed_user.count() < self.user_count:
             GameUser().create(self, user, \
-                              get_random_value(min_val=1, max_val=len(existed_user)+1, excepted_values=[exist_user.game_number for exist_user in existed_user]), existed_user)
+                              get_random_value(min_val=1, max_val=existed_user.count()+1, excepted_values=[exist_user.game_number for exist_user in existed_user]), existed_user)
             game_logger(f'GameUser for User {user} CREATED')
-        else:
+
+        if existed_user.count() + 1  == self.user_count:
             self.lobby_created()
 
-    @lobby_status_check(GameStatusesEnum.NOT_CREATED)
     def remove_user(self, user:User) -> None:
-        deleted_user = GameUser.objects.filter(account_id=user, game_id=self.game_id).delete()
+        game_user = GameUser.objects.filter(account_id=user, game_id=self.game_id).first()
+        game_user.kick_from_game()
+
         game_logger(f'GameUser for User {user} DELETED')
+        if len(GameUser.objects.filter(game_id=self.game_id, is_in_game=True).all()) == 0:
+            self.delete()
 
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
     def regenerate_user(self, user:User) -> None:
-        existed_user = GameUser.objects.filter(game_id=self.game_id).all()
-        for ex_user in existed_user:
-            if ex_user.account_id.username == user.username:
-                ex_user.regenerate_user()
-                game_logger(f'GameUser for User {user} REGENERATED')
+        existed_user = GameUser.objects.get(account_id=user, game_id=self.game_id)
+        existed_user.regenerate_user()
+        game_logger(f'GameUser for User {user} REGENERATED')
 
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
     def lobby_created(self) -> None:
@@ -249,7 +289,6 @@ class GameEngine(models.Model):
     def start_game(self,) -> None:
         self.game_status = GameStatusesEnum.IN_PROGRESS
         self.make_turn()
-        self.user_number_turn = 1
         self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.IN_PROGRESS}')
 
@@ -257,7 +296,7 @@ class GameEngine(models.Model):
     def make_turn(self,) -> None:
         self.game_status = GameStatusesEnum.TURNING
         self.turn += 1
-        self.user_number_turn = 1
+        self.set_next_game_number_turn()
         self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.TURNING}')
     
@@ -265,6 +304,7 @@ class GameEngine(models.Model):
     @lobby_status_check(GameStatusesEnum.TURNING)
     def end_turn(self,) -> None:
         self.game_status = GameStatusesEnum.VOTING
+        self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.VOTING}')
 
 
@@ -272,12 +312,12 @@ class GameEngine(models.Model):
     def make_vote(self, game_user:GameUser, vote_user_id:UUID):
         game_user.make_vote(vote_user_id)
 
-    def get_all_votes(self,):
+    def get_all_votes(self,) -> list[tuple[str, int]]:
         return Counter([GameUser.objects.get(user_id=user.vote_id).game_name for user in GameUser.get_user_in_game(self.game_id) if user.vote_id]).most_common()
 
-    #FIXME need to fix
     @lobby_status_check(GameStatusesEnum.VOTING)
     def end_vote(self,) -> None | str:
+        # На первом ходу нельзя исключать
         if self.turn > 1:
             all_votes:list[tuple[UUID, int]] = Counter([game_user.vote_id for game_user in GameUser.get_user_in_game(self.game_id) if game_user.vote_id]).most_common()
 
@@ -309,14 +349,18 @@ class GameEngine(models.Model):
 
     @lobby_status_check(GameStatusesEnum.VOTING)
     def game_ended(self,) -> str:
-        self.game_status = GameStatusesEnum.END        
+        self.game_status = GameStatusesEnum.END 
+        self.ending = self.generate_ending()
         self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.END}')
 
     @lobby_status_check(GameStatusesEnum.END)
     def generate_ending(self,) -> str:
-        req_to_nn = "THIS IS ZAEBIS ENDING"
-        return req_to_nn
+        promt = ""
+        promt += self.as_nn_promt()
+        for game_user in GameUser.get_user_in_game(self.game_id):
+            promt += game_user.as_nn_promt()
+        return nn_request.request_to_nn(promt)
 
     @lobby_status_check(GameStatusesEnum.VOTING)
     def kick_from_game_by_id(self, user_id:UUID) -> None:
