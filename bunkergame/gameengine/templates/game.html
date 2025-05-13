@@ -160,13 +160,113 @@
             padding: 10px 15px; /* Уменьшенный отступ для кнопки */
         }
     }
+    .character.highlight {
+        border: 2px solid #ffeb3b; /* Яркая рамка для выделения */
+        background-color: rgba(255, 235, 59, 0.2); /* Полупрозрачный фон для выделения */
+    }
+    .character.highlight-green {
+        border: 5px solid green; /* Зеленая рамка */
+    }
+    .vote-button {
+        display: block;
+        margin: 20px auto; /* Центрирование кнопки */
+        background-color: #ff5722; /* Цвет фона для кнопки голосования */
+        color: white;
+        padding: 12px 20px; /* Увеличенный отступ */
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-align: center;
+        transition: background-color 0.3s, transform 0.3s; /* Плавный переход */
+    }
+
+    .vote-button:hover {
+        background-color: #e64a19; /* Цвет фона при наведении */
+        transform: scale(1.05); /* Увеличение кнопки при наведении */
+    }
+    .status-window {
+        background-color: #444444;
+        margin: 20px 0; /* Отступ сверху и снизу */
+        padding: 15px;
+        border-radius: 8px;
+        border: 2px solid #6200ea; /* Рамка для статуса */
+        color: #ffffff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Тень для статуса */
+    }
+
+    .status-header {
+        font-size: 1.8em; /* Увеличенный размер шрифта для заголовка */
+        margin-bottom: 10px; /* Отступ снизу */
+        text-align: center;
+        color: #ffeb3b; /* Цвет заголовка */
+    }
+
+    .status-info {
+        display: flex;
+        justify-content: space-between; /* Разделение информации */
+        padding: 10px 0;
+        border-bottom: 1px solid #6200ea; /* Разделительная линия */
+    }
+
+    .status-info:last-child {
+        border-bottom: none; /* Убираем разделитель у последнего элемента */
+    }
+
+    .status-label {
+        font-weight: bold; /* Жирный шрифт для меток */
+    }
+
+    .status-value {
+        color: #ffffff; /* Цвет значений */
+    }
+    .votes-window {
+        background-color: #444444;
+        margin: 20px 0; /* Отступ сверху и снизу */
+        padding: 15px;
+        border-radius: 8px;
+        border: 2px solid #6200ea; /* Рамка для окна голосов */
+        color: #ffffff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Тень для окна голосов */
+    }
+
+    .votes-header {
+        font-size: 1.8em; /* Увеличенный размер шрифта для заголовка */
+        margin-bottom: 10px; /* Отступ снизу */
+        text-align: center;
+        color: #ffeb3b; /* Цвет заголовка */
+    }
+
+    .vote-item {
+        display: flex;
+        justify-content: space-between; /* Разделение информации */
+        padding: 10px 0;
+        border-bottom: 1px solid #6200ea; /* Разделительная линия */
+    }
+
+    .vote-item:last-child {
+        border-bottom: none; /* Убираем разделитель у последнего элемента */
+    }
+
+    .vote-label {
+        font-weight: bold; /* Жирный шрифт для меток */
+    }
+
+    .vote-count {
+        color: #ffffff; /* Цвет значений */
+    }
+    .struck {
+        text-decoration: line-through; /* Зачеркивание текста */
+        cursor: not-allowed; /* Указатель курсора для отключенной кнопки */
+        opacity: 0.6; /* Уменьшенная видимость для зачеркинутых персонажей */
+    }
+
 </style>
 
 <div class="character-window">
     <h2>Бункер ({{game_info.game_name}})</h2>
     
     <div class="nav-bar">
-        <a href="{% url 'gameengine:start_game' game_info.game_id %}" class="nav-button">Начать игру</a>
+        <button class="nav-button" onclick="startGame()" class="nav-button">Начать игру</button>
         <a href="{% url 'gameengine:leave_game' game_info.game_id %}" class="nav-button">Выход</a>
     </div>
 
@@ -180,20 +280,59 @@
         <p>{{ game_info.map_descriptions }}</p>
     </div>
 
-    <div class="status-window">
-        <h3>Текущий статус игры</h3>
-        <p id="game-status">{{game_info.game_status}}</p>
+    <div id="ending-info" class="general-info">
+        <h3>Концовка</h3>
+        {% if game_info.ending %} 
+        <p>{{ game_info.ending }}</p>
+        {%else%}
+        <p>Конец пока неизвестен</p>
+        {% endif %}
+    </div>
+
+
+    <div id="game-status" class="status-window">
+        <h3 class="status-header">Текущий статус игры</h3>
+        <div class="status-info">
+            <span class="status-label">Статус:</span>
+            <span class="status-value">{{game_info.game_status}}</span>
+        </div>
+        <div class="status-info">
+            <span class="status-label">Номер хода:</span>
+            <span class="status-value">{{game_info.turn}}</span>
+        </div>
+        <div class="status-info">
+            <span class="status-label">Ход игрока:</span>
+            <span class="status-value">{{game_info.user_number_turn}}</span>    
+        </div>
+    </div>
+
+    <div id="votes-window" class="votes-window">
+        <h3 class="votes-header">Голоса за исключение</h3>
+        {% for name, count in game_info.all_votes %}
+            <div class="vote-item">
+                <span class="vote-label">{{ name }}</span>
+                <span class="vote-count">{{ count }} голосов</span>
+            </div>
+        {% empty %}
+            <p style="color: #ffffff; text-align: center;">Нет голосов за исключение.</p>
+        {% endfor %}
+        <div>
+        <button onclick="endVote('')" class="vote-button">Закончить голосование</button>
+        <button onclick="retractVote('')" class="vote-button">Отменить голос</button>
+        </div>
     </div>
 
     <div class="character-list" id="user_list_{{ game_info.game_id}}">
         {% for character in game_users %}
-            <div class="character">
+                <div class="character{% if character.username == game_info.request_username %} highlight{% endif %} {% if character.game_number == game_info.user_number_turn %} highlight-green{% endif %} {% if not character.is_in_game %} struck{% endif %}">  
+
                 <div class="character-number">{{ character.game_number }}</div> 
                 <h3>{{ character.game_name }}<div>({{character.username}})</div></h3>
-                
+
+
                 <p onclick="showStat('{{ character.username }}', 'profession')">
                     <strong>Профессия:</strong>
-                    {% if character.is_profession_visible or character.username == game_info.request_username %}
+                    {% if character.is_profession_visible or character.username == game_info.request_username or character.is_in_game == False or game_info.game_status == "Игра закончилась" %}
                         {{ character.profession }} 
                         {% if character.username == game_info.request_username %}
                             {% if character.is_profession_visible %}
@@ -209,7 +348,7 @@
                 
                 <p onclick="showStat('{{ character.username }}', 'health')">
                     <strong>Здоровье:</strong>
-                    {% if character.is_health_visible or character.username == game_info.request_username %}
+                    {% if character.is_health_visible or character.username == game_info.request_username or character.is_in_game == False or game_info.game_status == "Игра закончилась" %}
                         {{ character.health }}
                         {% if character.username == game_info.request_username %}
                             {% if character.is_health_visible %}
@@ -225,7 +364,7 @@
                 
                 <p onclick="showStat('{{ character.username }}', 'bio_character')">
                     <strong>БИО:</strong>
-                    {% if character.is_bio_character_visible or character.username == game_info.request_username %}
+                    {% if character.is_bio_character_visible or character.username == game_info.request_username or character.is_in_game == False or game_info.game_status == "Игра закончилась"  %}
                         {{ character.bio_character }}
                         {% if character.username == game_info.request_username %}
                             {% if character.is_bio_character_visible %}
@@ -241,7 +380,7 @@
                 
                 <p onclick="showStat('{{ character.username }}', 'additional_skills')">
                     <strong>Дополнительные навыки:</strong>
-                    {% if character.is_additional_skills_visible or character.username == game_info.request_username %}
+                    {% if character.is_additional_skills_visible or character.username == game_info.request_username or character.is_in_game == False or game_info.game_status == "Игра закончилась"  %}
                         {{ character.additional_skills }}
                         {% if character.username == game_info.request_username %}
                             {% if character.is_additional_skills_visible %}
@@ -257,7 +396,7 @@
                 
                 <p onclick="showStat('{{ character.username }}', 'hobby')">
                     <strong>Хобби:</strong>
-                    {% if character.is_hobby_visible or character.username == game_info.request_username %}
+                    {% if character.is_hobby_visible or character.username == game_info.request_username or character.is_in_game == False or game_info.game_status == "Игра закончилась"  %}
                         {{ character.hobby }}
                         {% if character.username == game_info.request_username %}
                             {% if character.is_hobby_visible %}
@@ -273,7 +412,7 @@
                 
                 <p onclick="showStat('{{ character.username }}', 'spec_condition')">
                     <strong>Особые условия:</strong>
-                    {% if character.is_spec_condition_visible or character.username == game_info.request_username %}
+                    {% if character.is_spec_condition_visible or character.username == game_info.request_username or character.is_in_game == False or game_info.game_status == "Игра закончилась"  %}
                         {{ character.spec_condition }}
                         {% if character.username == game_info.request_username %}
                             {% if character.is_spec_condition_visible %}
@@ -289,7 +428,7 @@
                 
                 <p onclick="showStat('{{ character.username }}', 'items')">
                     <strong>Вещи:</strong>
-                    {% if character.is_items_visible or character.username == game_info.request_username %}
+                    {% if character.is_items_visible or character.username == game_info.request_username or character.is_in_game == False or game_info.game_status == "Игра закончилась"  %}
                         {{ character.items }}
                         {% if character.username == game_info.request_username %}
                             {% if character.is_items_visible %}
@@ -302,7 +441,7 @@
                         Неизвестно
                     {% endif %}
                 </p>
-                
+                <button class="vote-button" {% if not character.is_in_game %} disabled {% endif %} onclick="makeVote('{{ character.user_id }}')">Проголосовать за исключение</button>
             </div>
         {% empty %}
             <p style="color: #ffffff; text-align: center;">Нет доступных персонажей.</p>
@@ -313,76 +452,250 @@
 <script>
 const gameId = "{{ game_info.game_id }}"; // Предполагаем, что game_id передан в контексте
 const username = "{{ game_info.request_username }}"; // Предполагаем, что username передан в контексте
-const chatSocket = new WebSocket(`ws://${window.location.host}/ws/game/${gameId}/`);
+let chatSocket;
+let reconnectAttempts = 0; // Счетчик попыток переподключения
+const maxReconnectAttempts = 5; // Максимальное количество попыток переподключения
 
+
+function endVote() {
+    fetch(`/game/end_vote/${gameId}/`)
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.err || 'Неизвестная ошибка');
+            });
+        }
+        return response.json();
+    })
+    .then(res =>{
+        showSuccess(res.message)
+    })
+    .catch(error => {
+        showError(error.message);
+    });
+}
+
+function retractVote() {
+    fetch(`/game/retract_vote/${gameId}/`)
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.err || 'Неизвестная ошибка');
+            });
+        }
+        return response.json();
+    })
+    .then(res =>{
+        showSuccess(res.message)
+    })
+    .catch(error => {
+        showError(error.message);
+    });
+}
 function showStat(e_username, stat) {
     // Проверяем, является ли пользователь владельцем персонажа
     if (e_username == username){
-        fetch(`/game/showstat/${gameId}/?statname=${stat}`, {})
-        .then(response => response.json())
-    }
-}
-
-chatSocket.onmessage = function(e) {
-    const data = JSON.parse(e.data);
-    console.log(data.message);
-
-    if (data.message.type === 'game_status') {
-        document.getElementById("game-status").innerText = data.message.game_info.game_status;
-
-        const characterList = document.getElementById(`user_list_${data.message.game_info.game_id}`);
-        characterList.innerHTML = ''; // Очищаем текущие карточки
-        
-        data.message.game_users.forEach(character => {
-            const characterDiv = document.createElement('div');
-            characterDiv.className = 'character';
-            characterDiv.id = `character-${character.game_number}`;
-            characterDiv.innerHTML = `
-                <div class="character-number">${character.game_number}</div>
-                <h3>${character.game_name}<div>(${character.username})</div></h3>
-                <p onclick="showStat('${character.username}', 'profession')">
-                    <strong>Профессия:</strong>
-                    ${character.is_profession_visible || character.username === username ? `<span class="profession">${character.profession} ${character.username === username  ? character.is_profession_visible ? `(Показано)` : `(Не показано)` : `<div/>`} </span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'health')">
-                    <strong>Здоровье:</strong>
-                    ${character.is_health_visible || character.username === username ? `<span class="health">${character.health} ${character.username === username  ? character.is_health_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'bio_character')">
-                    <strong>БИО:</strong>
-                    ${character.is_bio_character_visible || character.username === username ? `<span class="bio">${character.bio_character} ${character.username === username  ? character.is_bio_character_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'additional_skills')">
-                    <strong>Дополнительные навыки:</strong>
-                    ${character.is_additional_skills_visible || character.username === username ? `<span class="additional-skills">${character.additional_skills} ${character.username === username  ? character.is_additional_skills_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'hobby')">
-                    <strong>Хобби:</strong>
-                    ${character.is_hobby_visible || character.username === username ? `<span class="hobby">${character.hobby} ${character.username === username  ? character.is_hobby_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'spec_condition')">
-                    <strong>Особые условия:</strong>
-                    ${character.is_spec_condition_visible || character.username === username ? `<span class="spec-condition">${character.spec_condition} ${character.username === username  ? character.is_spec_condition_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-                <p onclick="showStat('${character.username}', 'items')">
-                    <strong>Вещи:</strong>
-                    ${character.is_items_visible || character.username === username ? `<span class="items">${character.items} ${character.username === username  ? character.is_items_visible ? `(Показано)` : `(Не показано)` : `<div/>`}</span>` : `<span>Неизвестно</span>`}
-                </p>
-            `;
-            characterList.appendChild(characterDiv); // Добавляем новую карточку в список
+        fetch(`/game/showstat/${gameId}/?statname=${stat}`)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.err || 'Неизвестная ошибка');
+                });
+            }
+            return response.json();
+        })
+        .then(res =>{
+            showSuccess(res.message)
+        })
+        .catch(error => {
+            showError(error.message);
         });
     }
-};
-
-chatSocket.onclose = function(e) {
-    console.error('Chat socket closed unexpectedly');
-};
-
-function sendMessage(message) {
-    chatSocket.send(JSON.stringify({
-        'message': message
-    }));
 }
+
+function makeVote(vote_user_id) {
+    fetch(`/game/make_vote/${gameId}/?vote_user_id=${vote_user_id}`)
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.err || 'Неизвестная ошибка');
+            });
+        }
+        return response.json();
+    })
+    .then(res =>{
+        showSuccess(res.message)
+    })
+    .catch(error => {
+        showError(error.message);
+    });
+}
+
+function startGame() {
+    fetch(`/game/start/${gameId}`)
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.err || 'Неизвестная ошибка');
+            });
+        }
+        return response.json();
+    })
+    .then(res =>{
+        showSuccess(res.message)
+    })
+    .catch(error => {
+        showError(error.message);
+    });
+}
+
+
+
+function connect() {
+    chatSocket = new WebSocket(`ws://${window.location.host}/ws/game/${gameId}/`);
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        console.log(data.message);
+
+        if (data.message.type === 'game_status') {
+            // Обработка статуса игры
+            document.getElementById("game-status").innerHTML = `
+                <h3 class="status-header">Текущий статус игры</h3>
+                <div class="status-info">
+                    <span class="status-label">Статус:</span>
+                    <span class="status-value">${data.message.game_info.game_status}</span>
+                </div>
+                <div class="status-info">
+                    <span class="status-label">Номер хода:</span>
+                    <span class="status-value">${data.message.game_info.turn}</span>
+                </div>
+                <div class="status-info">
+                    <span class="status-label">Ход игрока:</span>
+                    <span class="status-value">${data.message.game_info.user_number_turn}</span>
+                </div>
+            `;
+
+            document.getElementById("ending-info").innerHTML= `
+                    <h3>Концовка</h3>
+                    <p>${data.message.game_info.ending}</p>
+            `;
+            document.getElementById("votes-window").innerHTML = `
+            <h3 class="votes-header">Голоса за исключение</h3>
+            `;
+            data.message.game_info.all_votes.forEach(item =>{
+                document.getElementById("votes-window").innerHTML += `
+                <div class="vote-item">
+                    <span class="vote-label">${item[0]}</span>
+                    <span class="vote-count">${item[1]} голосов</span>
+                </div>
+                `
+            })
+
+            if (data.message.game_info.all_votes.length == 0) {
+                document.getElementById("votes-window").innerHTML += `
+                 <p style="color: #ffffff; text-align: center;">Нет голосов за исключение.</p>
+                `
+            }
+            document.getElementById("votes-window").innerHTML +=`
+            <div>
+            <button onclick="endVote('')" class="vote-button">Закончить голосование</button>
+            <button onclick="retractVote('')" class="vote-button">Отменить голос</button>
+            </div>
+            `
+
+            const characterList = document.getElementById(`user_list_${data.message.game_info.game_id}`);
+            characterList.innerHTML = ''; // Очищаем текущие карточки
+            
+            data.message.game_users.forEach(character => {
+                const characterDiv = document.createElement('div');
+                if (character.username === username){
+                    characterDiv.className = 'character highlight';
+                    if (character.game_number === data.message.game_info.user_number_turn){
+                        characterDiv.className = 'character highlight highlight-green';
+                    }
+                } else {
+                    characterDiv.className = 'character';
+                    if (character.game_number === data.message.game_info.user_number_turn){
+                        characterDiv.className = 'character highlight-green';
+                    }
+                }
+                if (character.is_in_game == false){
+                    characterDiv.className += ' struck';
+                }
+
+                characterDiv.id = `character-${character.game_number}`;
+                characterDiv.innerHTML = `
+                    <div class="character-number">${character.game_number}</div>
+                    <h3>${character.game_name}<div>(${character.username})</div></h3>
+                    <p onclick="showStat('${character.username}', 'profession')">
+                        <strong>Профессия:</strong>
+                        ${character.is_profession_visible || character.username === username  || character.is_in_game == false || data.message.game_info.game_status == 'Игра закончилась' ? `<span class="profession">${character.profession} ${character.username === username ? character.is_profession_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'health')">
+                        <strong>Здоровье:</strong>
+                        ${character.is_health_visible || character.username === username || character.is_in_game == false || data.message.game_info.game_status == 'Игра закончилась'  ? `<span class="health">${character.health} ${character.username === username ? character.is_health_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'bio_character')">
+                        <strong>БИО:</strong>
+                        ${character.is_bio_character_visible || character.username === username || character.is_in_game == false || data.message.game_info.game_status == 'Игра закончилась'  ? `<span class="bio">${character.bio_character} ${character.username === username ? character.is_bio_character_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'additional_skills')">
+                        <strong>Дополнительные навыки:</strong>
+                        ${character.is_additional_skills_visible || character.username === username || character.is_in_game == false  || data.message.game_info.game_status == 'Игра закончилась'  ? `<span class="additional-skills">${character.additional_skills} ${character.username === username ? character.is_additional_skills_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'hobby')">
+                        <strong>Хобби:</strong>
+                        ${character.is_hobby_visible || character.username === username || character.is_in_game == false || data.message.game_info.game_status == 'Игра закончилась'  ? `<span class="hobby">${character.hobby} ${character.username === username ? character.is_hobby_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'spec_condition')">
+                        <strong>Особые условия:</strong>
+                        ${character.is_spec_condition_visible || character.username === username || character.is_in_game == false || data.message.game_info.game_status == 'Игра закончилась'  ? `<span class="spec-condition">${character.spec_condition} ${character.username === username ? character.is_spec_condition_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                    <p onclick="showStat('${character.username}', 'items')">
+                        <strong>Вещи:</strong>
+                        ${character.is_items_visible || character.username === username || character.is_in_game == false || data.message.game_info.game_status == 'Игра закончилась'  ? `<span class="items">${character.items} ${character.username === username ? character.is_items_visible ? `(Показано)` : `(Не показано)` : ``}</span>` : `<span>Неизвестно</span>`}
+                    </p>
+                `;
+                if (character.is_in_game == true){
+                    characterDiv.innerHTML += `
+                    <button class="vote-button" onclick="makeVote('${character.user_id }')">Проголосовать за исключение</button>
+                    `
+                }else(
+                    characterDiv.innerHTML += `
+                    <button disabled class="vote-button" onclick="makeVote('${character.user_id }')">Проголосовать за исключение</button>
+                    `
+                )
+                characterList.appendChild(characterDiv); // Добавляем новую карточку в список
+            });
+        }
+        if (data.message.type === 'game_info_message') {
+            if (data.message.error == false) {
+                showInfo(data.message.message);
+            } else {
+                showError(data.message.message);
+            }
+        }
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly');
+        reconnect();
+    };
+}
+
+function reconnect() {
+    if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        console.log(`Попытка переподключения ${reconnectAttempts}/${maxReconnectAttempts}...`);
+        setTimeout(connect, 2000); // Подождите 2 секунды перед попыткой переподключения
+    } else {
+        console.error('Максимальное количество попыток переподключения достигнуто.');
+    }
+}
+
+// Первоначальное подключение
+connect();
 </script>
 
 {% endblock %}

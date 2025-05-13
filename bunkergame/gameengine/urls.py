@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import create_empty_game, game_list, join_game, leave_game, start_game, show_stat
+from .views import create_empty_game, game_list, join_game, leave_game, start_game, show_stat, make_vote, retract_vote, end_vote
 
 app_name = 'gameengine'
 
@@ -11,5 +11,9 @@ urlpatterns = [
     path('leave/<uuid:game_id>', leave_game, name='leave_game'),
     path('start/<uuid:game_id>', start_game, name='start_game'),
     path('showstat/<uuid:game_id>/', show_stat, name='show_stat'),
+    path('make_vote/<uuid:game_id>/', make_vote, name='make_vote'),
+
+    path('end_vote/<uuid:game_id>/', end_vote, name='end_vote'),
+    path('retract_vote/<uuid:game_id>/', retract_vote, name='retract_vote'),
 
 ]
