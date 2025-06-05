@@ -120,6 +120,21 @@ def end_vote(request:HttpRequest, game_id:UUID):
         return JsonResponse({'err':'Только владелец комнаты может закончить голосование'}, status=400)
 
 @decorators.login_required(login_url='/accounts/login/')
+def end_user_turn(request:HttpRequest, game_id:UUID):
+    game_engine = GameEngine.objects.get(game_id=game_id)
+    user = User.objects.get(id=request.user.id)
+    game_user = GameUser.objects.get(game_id=game_engine.game_id, account_id=user)
+    try:
+        game_engine.end_user_turn(game_user)
+        sync_game(game_id)
+        return JsonResponse({'message':'Ход закончен'}, status=200)
+    except exceptions.StatNotShowed:
+        return JsonResponse({'err':'Вы не показали характеристику'}, status=400)
+    except exceptions.LobbyStatusCheckMismatch:
+        return JsonResponse({'err':'Сейчас не ваш ход'}, status=400)
+    
+    
+@decorators.login_required(login_url='/accounts/login/')
 def retract_vote(request:HttpRequest, game_id:UUID):
     game_engine = GameEngine.objects.get(game_id=game_id)
     user = User.objects.get(id=request.user.id)

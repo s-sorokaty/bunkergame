@@ -41,7 +41,7 @@ def sync_game(game_id:UUID):
         send_game_message(game_id, {"game_users": [game_user.as_ru_dict() for game_user in game_users],
                                 "game_info":{**game_engine.get_game_info()}})
     except Exception as e:
-        print(f'cannot sync game {game_id}')
+        print(f'cannot sync game {game_id} {e}')
 
 
 def send_info(game_id:UUID, message:str, error:bool=False):

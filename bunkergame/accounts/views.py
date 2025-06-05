@@ -6,7 +6,7 @@ def register(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            form.save()
+            form.save(request)
             return redirect('/lobbys/lobbys_list')
     else:
         form = UserRegistrationForm()

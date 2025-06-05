@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth import login
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -45,9 +46,10 @@ class UserRegistrationForm(forms.ModelForm):
 
         return pwd
 
-    def save(self, commit=True):
+    def save(self, request, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
+            login(request, user)
         return user
