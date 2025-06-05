@@ -319,6 +319,7 @@
         <div>
         <button onclick="endVote('')" class="vote-button">Закончить голосование</button>
         <button onclick="retractVote('')" class="vote-button">Отменить голос</button>
+        <button onclick="endTurn('')" class="vote-button">Закончить ход</button>
         </div>
     </div>
 
@@ -513,6 +514,23 @@ function showStat(e_username, stat) {
     }
 }
 
+function endTurn() {
+    fetch(`/game/end_user_turn/${gameId}`)
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.err || 'Неизвестная ошибка');
+            });
+        }
+        return response.json();
+    })
+    .then(res =>{
+        showSuccess(res.message)
+    })
+    .catch(error => {
+        showError(error.message);
+    });
+}
 function makeVote(vote_user_id) {
     fetch(`/game/make_vote/${gameId}/?vote_user_id=${vote_user_id}`)
     .then(response => {
@@ -601,6 +619,7 @@ function connect() {
             <div>
             <button onclick="endVote('')" class="vote-button">Закончить голосование</button>
             <button onclick="retractVote('')" class="vote-button">Отменить голос</button>
+            <button onclick="endTurn('')" class="vote-button">Закончить ход</button>
             </div>
             `
 

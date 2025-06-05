@@ -1,8 +1,7 @@
 version: "3"
 
 services:
-
-  tg_bot:
+  buncker-game-server:
     container_name: "bunker-game"
     build:
       context: ./bunkergame

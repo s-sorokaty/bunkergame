@@ -42,6 +42,8 @@ class GameUser(models.Model):
     is_spec_condition_visible = models.BooleanField(default=False)
     is_items_visible = models.BooleanField(default=False)
 
+    is_showed_stat_at_turn = models.BooleanField(default=False)
+
     is_in_game = models.BooleanField(default=True)
     vote_id = models.UUIDField(editable=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -70,6 +72,18 @@ class GameUser(models.Model):
             "is_spec_condition_visible": self.is_spec_condition_visible,
             "is_items_visible": self.is_items_visible
             }
+    
+    @staticmethod
+    def get_stat_dict() -> dict:
+        return {
+            "profession":"is_profession_visible",
+            "health":"is_health_visible",
+            "bio_character":"is_bio_character_visible",
+            "additional_skills":"is_additional_skills_visible",
+            "hobby":"is_hobby_visible",
+            "spec_condition":"is_spec_condition_visible",
+            "items":"is_items_visible",
+        }
     
     def as_nn_promt(self,) -> str:
         return f"""
@@ -111,37 +125,21 @@ class GameUser(models.Model):
         self.age = get_random_value(min_val=16, max_val=70)
         self.save()
 
-    def show_stat(self, statname:str, callback:callable=None):
-        if statname == 'profession':
-            if self.is_profession_visible: raise exceptions.StatAlreadyShowed
-            self.is_profession_visible = True
-        
-        if statname == 'health':
-            if self.is_health_visible: raise exceptions.StatAlreadyShowed
-            self.is_health_visible = True
-
-        if statname == 'bio_character':
-            if self.is_bio_character_visible: raise exceptions.StatAlreadyShowed
-            self.is_bio_character_visible = True
-
-        if statname == 'additional_skills':
-            if self.is_additional_skills_visible: raise exceptions.StatAlreadyShowed
-            self.is_additional_skills_visible = True
-
-        if statname == 'hobby':
-            if self.is_hobby_visible: raise exceptions.StatAlreadyShowed
-            self.is_hobby_visible = True
-
-        if statname == 'spec_condition':
-            if self.is_spec_condition_visible: raise exceptions.StatAlreadyShowed
-            self.is_spec_condition_visible = True
-
-        if statname == 'items':
-            if self.is_items_visible: raise exceptions.StatAlreadyShowed
-            self.is_items_visible = True               
-
-        self.save()
+    def show_stat(self, statname:str):
+        if statname in list(self.get_stat_dict().keys()):
+            visible_method = getattr(self, self.get_stat_dict()[statname])
+            if visible_method: raise exceptions.StatAlreadyShowed
+            setattr(self, self.get_stat_dict()[statname], True)
+                        
+            self.is_showed_stat_at_turn = True
+            self.save()
+        else:
+            raise AttributeError(f"Stat '{statname}' does not exist")  # Обработка случая, если статистика не найдена
     
+    def end_user_turn(self,):
+        self.is_showed_stat_at_turn = False
+        self.save()
+       
     @staticmethod
     def get_user_in_game(game_id:UUID):
         return GameUser.objects.filter(game_id=game_id, is_in_game=True).all()
@@ -240,18 +238,27 @@ class GameEngine(models.Model):
 
     @lobby_status_check(GameStatusesEnum.TURNING)
     def show_stat(self, statname:str, game_user:GameUser) -> None:
+        if game_user.is_showed_stat_at_turn: raise exceptions.StatAlreadyShowed
         if self.user_number_turn == game_user.game_number:
             game_user.show_stat(statname)
+            game_logger(f'GameUser {game_user.user_id} show {statname}')
+        else:
+            raise exceptions.WrongPlayerTurn
+        
+    @lobby_status_check(GameStatusesEnum.TURNING)
+    def end_user_turn(self, game_user:GameUser) -> None:
+        if not game_user.is_showed_stat_at_turn: raise exceptions.StatNotShowed
+        if self.user_number_turn == game_user.game_number:
+            game_user.end_user_turn()
             self.set_next_game_number_turn()
 
             if self.user_number_turn == 0:
                 self.end_turn()
     
-            game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
+            game_logger(f'GameUser {game_user.user_id} status end_user_turn')
         else:
             raise exceptions.WrongPlayerTurn
         
-
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
     def join_user(self, user:User) -> None:
         existed_user = GameUser.objects.filter(game_id=self.game_id).all()
@@ -262,7 +269,7 @@ class GameEngine(models.Model):
             game_logger(f'GameUser for User {user} CREATED')
 
         if existed_user.count() + 1  == self.user_count:
-            self.lobby_created()
+            self.__lobby_created()
 
     def remove_user(self, user:User) -> None:
         game_user = GameUser.objects.filter(account_id=user, game_id=self.game_id).first()
@@ -279,7 +286,7 @@ class GameEngine(models.Model):
         game_logger(f'GameUser for User {user} REGENERATED')
 
     @lobby_status_check(GameStatusesEnum.NOT_CREATED)
-    def lobby_created(self) -> None:
+    def __lobby_created(self) -> None:
         self.game_status = GameStatusesEnum.CREATED
         self.save()
         game_logger(f'GameEngine {self.game_id} status {GameStatusesEnum.CREATED}')
